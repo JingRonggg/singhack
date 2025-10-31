@@ -105,9 +105,12 @@ def parsing_web_content_to_rules(
     """
 
     # TODO: update api key management to use config loader with secret strings
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise ValueError("GROQ_API_KEY environment variable is required")
     llm = ChatGroq(
         model="openai/gpt-oss-120b",
-        api_key=os.getenv("GROQ_API_KEY"),
+        api_key=api_key,
         temperature=0.3,
     )
     structured_llm = llm.with_structured_output(RulesSchema)
