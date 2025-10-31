@@ -124,7 +124,7 @@ def parsing_web_content_to_rules(
             [f"URL: {page['url']}\n\n{page['content'][:6000]}" for page in pages]
         )
         system_message = SystemMessage(
-            content="""You are a regulatory compliance expert. 
+            content="""You are a regulatory compliance expert.
 Extract and consolidate rules and regulations from web content across multiple pages.
 Extract clear, concise regulatory rules, guidelines, and requirements.
 Number the rules sequentially starting from "1" as strings."""
@@ -172,6 +172,7 @@ Extract at least 5 key rules if available.
             }
 
     return result
+
 
 @tool
 def web_scraper() -> dict[str, dict[str, str]]:
