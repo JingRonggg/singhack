@@ -103,6 +103,8 @@ def parsing_web_content_to_rules(
     Returns:
     dict[str, dict[str, str]]: The extracted rules or information grouped by domain.
     """
+
+    # TODO: update api key management to use config loader with secret strings
     llm = ChatGroq(
         model="openai/gpt-oss-120b",
         api_key=os.getenv("GROQ_API_KEY"),
