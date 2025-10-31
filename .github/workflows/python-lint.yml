@@ -1,0 +1,54 @@
+on:
+  pull_request:
+  push:
+
+jobs:
+  lock_file:
+    name: Lock Dependencies
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+
+      - name: Set environment
+        uses: ./.github/actions/setup
+
+      - name: Lock dependencies
+        run: uv lock --locked
+
+  linting:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    needs: [lock_file]
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+
+      - name: Set environment
+        uses: ./.github/actions/setup
+
+      - name: Ruff linting
+        run: uvx ruff check .
+
+  formating:
+    name: Check Formatting
+    runs-on: ubuntu-latest
+    needs: [lock_file]
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+
+      - name: Set environment
+        uses: ./.github/actions/setup
+
+      - name: Ruff linting
+        run: uvx ruff format --check .
