@@ -2,6 +2,7 @@
 
 from typing import List, Optional, Dict, Any
 import logging
+from dateutil import parser as date_parser
 
 from backend.config.supabase import get_supabase_client
 from backend.schemas import (
@@ -21,6 +22,74 @@ class DatabaseService:
         """Initialize database service with Supabase client."""
         self.client = get_supabase_client()
 
+    def _parse_date(self, date_str: str) -> Optional[str]:
+        """
+        Parse a date string into ISO format for Supabase.
+
+        Args:
+            date_str: Date string in various formats
+
+        Returns:
+            ISO formatted date string or None if empty/invalid
+        """
+        if not date_str or date_str.strip() == "":
+            return None
+
+        try:
+            # Try to parse the date using dateutil which handles many formats
+            parsed_date = date_parser.parse(date_str, dayfirst=True)
+            return parsed_date.isoformat()
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Could not parse date '{date_str}': {e}")
+            return None
+
+    def _prepare_transaction_data(self, transaction: Transaction) -> Dict[str, Any]:
+        """
+        Prepare transaction data for storage by converting date strings to ISO format.
+
+        Args:
+            transaction: Transaction object
+
+        Returns:
+            Dictionary with properly formatted data for Supabase
+        """
+        data = transaction.model_dump()
+
+        # Convert date fields to ISO format
+        date_fields = [
+            "booking_datetime",
+            "value_date",
+            "kyc_last_completed",
+            "kyc_due_date",
+            "suspicion_determined_datetime",
+            "str_filed_datetime",
+        ]
+
+        # Optional date fields that can be None
+        optional_fields = [
+            "kyc_last_completed",
+            "kyc_due_date",
+            "suspicion_determined_datetime",
+            "str_filed_datetime",
+        ]
+
+        for field in date_fields:
+            if field in data:
+                parsed = self._parse_date(data[field])
+                if parsed is None and field in optional_fields:
+                    # Optional fields - set to None instead of empty string
+                    data[field] = None
+                elif parsed is None:
+                    # Required field that couldn't be parsed - log error but keep original
+                    logger.warning(
+                        f"Required date field '{field}' could not be parsed: {data[field]}"
+                    )
+                    data[field] = None  # Set to None to avoid DB error
+                else:
+                    data[field] = parsed
+
+        return data
+
     def store_transaction(self, transaction: Transaction) -> Dict[str, Any]:
         """
         Store a transaction in the database.
@@ -35,8 +104,8 @@ class DatabaseService:
             Exception: If storage fails
         """
         try:
-            # Convert transaction to dict for storage
-            transaction_data = transaction.model_dump()
+            # Convert transaction to dict and prepare data
+            transaction_data = self._prepare_transaction_data(transaction)
 
             # Insert or update transaction
             result = (
@@ -101,8 +170,8 @@ class DatabaseService:
             Exception: If storage fails
         """
         try:
-            # Convert evaluation to dict for storage
-            eval_data = evaluation.model_dump()
+            # Convert evaluation to dict for storage (serialize datetime objects)
+            eval_data = evaluation.model_dump(mode="json")
             # Convert UUID to string
             eval_data["rule_id"] = str(eval_data["rule_id"])
 
@@ -397,6 +466,60 @@ class DatabaseService:
             logger.error(f"Failed to retrieve transactions requiring action: {e}")
             raise
 
+    def get_rule(self, rule_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve a rule by ID.
+
+        Args:
+            rule_id: Rule UUID to retrieve
+
+        Returns:
+            Rule data or None if not found
+        """
+        try:
+            result = (
+                self.client.table("rules").select("*").eq("rule_id", rule_id).execute()
+            )
+
+            return result.data[0] if result.data else None
+
+        except Exception as e:
+            logger.error(f"Failed to retrieve rule {rule_id}: {e}")
+            raise
+
+    def get_all_rules(
+        self, limit: int = 100, offset: int = 0, jurisdiction: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve all rules with optional jurisdiction filter.
+
+        Args:
+            limit: Maximum number of rules to retrieve
+            offset: Number of rules to skip
+            jurisdiction: Optional jurisdiction filter (e.g., "HK")
+
+        Returns:
+            List of rules
+        """
+        try:
+            query = self.client.table("rules").select("*")
+
+            # Apply jurisdiction filter if provided
+            if jurisdiction:
+                query = query.contains("jurisdiction", [jurisdiction])
+
+            result = (
+                query.order("created_at", desc=True)
+                .range(offset, offset + limit - 1)
+                .execute()
+            )
+
+            return result.data if result.data else []
+
+        except Exception as e:
+            logger.error(f"Failed to retrieve rules: {e}")
+            raise
+
     def get_dashboard_stats(self) -> Dict[str, Any]:
         """
         Get dashboard statistics.
@@ -435,10 +558,16 @@ class DatabaseService:
                 .execute()
             )
 
+            # Get total rules
+            total_rules = (
+                self.client.table("rules").select("id", count="exact").execute()
+            )
+
             return {
                 "total_transactions": total_txns.count,
                 "transactions_requiring_action": requires_action.count,
                 "total_rule_violations": violated_rules.count,
+                "total_rules": total_rules.count,
             }
 
         except Exception as e:

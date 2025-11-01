@@ -1,8 +1,13 @@
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, HttpUrl, field_validator
 from typing import List, Dict, Optional
+import logging
+
 from backend.tools.web_scraper import web_scraper
 from backend.schemas.rules import RulesSchema
+from backend.services.database_service import DatabaseService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["web-scraper"])
 
@@ -88,6 +93,30 @@ async def scrape_web_content(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail=f"Error validating rules for {domain}: {str(e)}",
                 )
+
+        # Store all extracted rules in the database
+        try:
+            db_service = DatabaseService()
+            stored_count = 0
+
+            for domain, rules_schema in validated_data.items():
+                # Iterate through all rules in the schema
+                for rule_key, rule in rules_schema.rules.items():
+                    try:
+                        db_service.store_rule(rule)
+                        stored_count += 1
+                        logger.info(f"Stored rule {rule.rule_id} from {domain}")
+                    except Exception as rule_error:
+                        # Log error but continue with other rules
+                        logger.error(
+                            f"Failed to store rule {rule.rule_id} from {domain}: {rule_error}"
+                        )
+
+            logger.info(f"Successfully stored {stored_count} rules in database")
+
+        except Exception as db_error:
+            # Log database error but don't fail the request - rules are still returned
+            logger.error(f"Database storage error (rules still returned): {db_error}")
 
         return validated_data
 

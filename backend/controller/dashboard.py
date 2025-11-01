@@ -33,6 +33,7 @@ class DashboardStats(BaseModel):
     total_transactions: int
     transactions_requiring_action: int
     total_rule_violations: int
+    total_rules: int
 
 
 @router.get("/stats", response_model=DashboardStats)
@@ -231,4 +232,79 @@ async def get_transaction_evaluations(transaction_id: str):
         raise HTTPException(
             status_code=500,
             detail=f"Failed to retrieve transaction evaluations: {str(e)}",
+        )
+
+
+@router.get("/rules")
+async def get_all_rules(
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    jurisdiction: Optional[str] = Query(default=None),
+):
+    """
+    Get all stored rules from the database.
+
+    Args:
+        limit: Maximum number of rules to retrieve (1-500, default 100)
+        offset: Number of rules to skip (default 0)
+        jurisdiction: Optional filter by jurisdiction (e.g., "HK", "SG")
+
+    Returns:
+        List of rules with pagination info
+
+    Example:
+        GET /api/dashboard/rules?limit=50&jurisdiction=HK
+    """
+    try:
+        db_service = DatabaseService()
+        rules = db_service.get_all_rules(
+            limit=limit, offset=offset, jurisdiction=jurisdiction
+        )
+
+        return {
+            "rules": rules,
+            "total": len(rules),
+            "limit": limit,
+            "offset": offset,
+            "jurisdiction_filter": jurisdiction,
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to retrieve rules: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve rules: {str(e)}",
+        )
+
+
+@router.get("/rules/{rule_id}")
+async def get_rule_details(rule_id: str):
+    """
+    Get detailed information about a specific rule.
+
+    Args:
+        rule_id: The rule UUID
+
+    Returns:
+        Rule details
+
+    Example:
+        GET /api/dashboard/rules/550e8400-e29b-41d4-a716-446655440001
+    """
+    try:
+        db_service = DatabaseService()
+        rule = db_service.get_rule(rule_id)
+
+        if not rule:
+            raise HTTPException(status_code=404, detail=f"Rule {rule_id} not found")
+
+        return rule
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to retrieve rule {rule_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve rule details: {str(e)}",
         )
