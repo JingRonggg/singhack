@@ -1,14 +1,20 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, UploadFile, File
 import logging
 from backend.schemas import Transaction, RiskOutput
 from backend.tools.risk_score import RiskScore
+from uuid import uuid4
+from backend.services.transaction_loader import TransactionLoaderService
+import os
+import json
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+UPLOAD_DIR = "data/uploads"
 
-@router.post("/transaction-risk", response_model=RiskOutput)
+
+@router.post("/transaction-single", response_model=RiskOutput)
 async def get_transaction_risk(transaction: Transaction):
     """
     EXAMPLE OUTPUT FORMAT:
@@ -68,7 +74,39 @@ async def get_transaction_risk(transaction: Transaction):
     """
     try:
         risk_score = RiskScore()
-        result = risk_score.calculate_risk_score(transaction)
+        with open("backend/risk/detect_suspicious_v2.json", "r") as f:
+            rules_json = json.load(f)
+        result = risk_score.calculate_trans_risk(transaction, rules_json)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error calculating transaction risk: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@router.post("/transaction-batch", response_model=RiskOutput)
+async def get_transaction_risk(file: UploadFile = File(...)):
+    try:
+        if not file.filename.endswith(".csv"):
+            raise HTTPException(status_code=400, detail="File must be a CSV file")
+
+        file_id = str(uuid4())
+        file_path = os.path.join(UPLOAD_DIR, f"{file_id}_{file.filename}")
+        folder = os.path.dirname(file_path)
+        if folder and not os.path.exists(folder):
+            os.makedirs(folder, exist_ok=True)
+
+        loader = TransactionLoaderService(file_path)
+        transactions = loader.load_all_transactions()
+        if not transactions:
+            raise HTTPException(
+                status_code=400, detail="No valid transactions found in CSV file"
+            )
+        risk_score = RiskScore()
+        result = risk_score.calculate_batch_risk(transactions)
         return result
     except HTTPException:
         raise
@@ -95,7 +133,6 @@ async def get_format_risk(format_doc: dict):
         "risk_score": 50.0
     }
     """
-
     try:
         risk_score = RiskScore()
         result = risk_score.get_risk_score(format_doc)

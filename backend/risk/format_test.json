@@ -1,106 +1,56 @@
 {
-  "file_id": "e3579ea8-6d66-4e72-b5eb-5db1d2747154",
-  "document_metadata": {
-    "file_type": "pdf",
-    "page_count": 1,
-    "total_text_length": 639
-  },
-  "document_structure": {
-    "headers": [
-      "detect vehicle movement.",
-      "brushless motors.",
-      "Pixhawk."
-    ],
-    "paragraph_count": 0
-  },
-  "format_validation": {
-    "double_spacing_occurrences": 0,
-    "spelling_mistakes": {
-      "total_errors": 500,
-      "spelling_errors_count": 500,
-      "spelling_errors": [
-        {
-          "word": "survaillence",
-          "message": "Possible spelling mistake: 'survaillence'",
-          "replacements": [
-            "surveillance"
-          ]
-        },
-        {
-          "word": "pixhawk",
-          "message": "Possible spelling mistake: 'pixhawk'",
-          "replacements": []
-        },
-        {
-          "word": "algoritm",
-          "message": "Possible spelling mistake: 'algoritm'",
-          "replacements": [
-            "algorithm",
-            "algorism"
-          ]
-        },
-        {
-          "word": "dron",
-          "message": "Possible spelling mistake: 'dron'",
-          "replacements": [
-            "iron",
-            "deon",
-            "drop"
-          ]
-        },
-        {
-          "word": "brushless",
-          "message": "Possible spelling mistake: 'brushless'",
-          "replacements": [
-            "bruskness",
-            "brashness",
-            "brushiest"
-          ]
-        },
-        {
-          "word": "conclussion",
-          "message": "Possible spelling mistake: 'conclussion'",
-          "replacements": [
-            "conclusion",
-            "concussion"
-          ]
-        },
-        {
-          "word": "performence",
-          "message": "Possible spelling mistake: 'performence'",
-          "replacements": [
-            "performance"
-          ]
-        },
-        {
-          "word": "enogh",
-          "message": "Possible spelling mistake: 'enogh'",
-          "replacements": [
-            "enough",
-            "enoch"
-          ]
-        },
-        {
-          "word": "stabilisation",
-          "message": "Possible spelling mistake: 'stabilisation'",
-          "replacements": [
-            "stabilization"
-          ]
-        },
-        {
-          "word": "achive",
-          "message": "Possible spelling mistake: 'achive'",
-          "replacements": [
-            "achieve",
-            "active",
-            "chive"
-          ]
-        }
-      ],
-      "characters_checked": 639
-    },
-    "irregular_fonts": [],
-    "font_size_variants": 1,
-    "indentation_inconsistent": true
-  }
+  "transaction_id": "ad66338d-b17f-47fc-a966-1b4395351b41",
+  "booking_jurisdiction": "HK",
+  "regulator": "HKMA/SFC",
+  "booking_datetime": "2024-10-10T10:24:43",
+  "value_date": "10/10/2024",
+  "amount": 590012.92,
+  "currency": "HKD",
+  "channel": "RTGS",
+  "product_type": "fx_conversion",
+  "originator_name": "Meredith Krueger",
+  "originator_account": "GB91GCCI85456233719196",
+  "originator_country": "AE",
+  "beneficiary_name": "Natalie Sandoval",
+  "beneficiary_account": "GB80LAUP42959382164081",
+  "beneficiary_country": "CN",
+  "swift_mt": "",
+  "ordering_institution_bic": "",
+  "beneficiary_institution_bic": "",
+  "swift_f50_present": true,
+  "swift_f59_present": true,
+  "swift_f70_purpose": "",
+  "swift_f71_charges": "",
+  "travel_rule_complete": true,
+  "fx_indicator": false,
+  "fx_base_ccy": "",
+  "fx_quote_ccy": "",
+  "fx_applied_rate": 0,
+  "fx_market_rate": 0,
+  "fx_spread_bps": 0,
+  "fx_counterparty": "",
+  "customer_id": "CUST-786015",
+  "customer_type": "corporate",
+  "customer_risk_rating": "Low",
+  "customer_is_pep": false,
+  "kyc_last_completed": "16/1/2023",
+  "kyc_due_date": "15/7/2023",
+  "edd_required": false,
+  "edd_performed": true,
+  "sow_documented": true,
+  "purpose_code": "SAL",
+  "narrative": "Least charge music anything wish practice.",
+  "is_advised": false,
+  "product_complex": false,
+  "client_risk_profile": "Low",
+  "suitability_assessed": true,
+  "suitability_result": "match",
+  "product_has_va_exposure": false,
+  "va_disclosure_provided": true,
+  "cash_id_verified": true,
+  "daily_cash_total_customer": 0,
+  "daily_cash_txn_count": 1,
+  "sanctions_screening": "potential",
+  "suspicion_determined_datetime": "",
+  "str_filed_datetime": ""
 }

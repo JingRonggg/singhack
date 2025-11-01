@@ -2,6 +2,10 @@ import os
 import json
 import pandas as pd
 from backend.agents.base_agent import BaseAgent
+from backend.schemas import RiskOutput, Transaction
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from backend.services.transaction_loader import TransactionLoaderService
+import time
 
 
 class RiskScore:
@@ -69,9 +73,6 @@ class RiskScore:
             json_str = json_str.replace(old, new)
         return json_str
 
-    # ----------------------------
-    # LLM Behavior Rule Generation
-    # ----------------------------
     def generate_behavior_rules(
         self,
         df_suspicious,
@@ -128,26 +129,21 @@ class RiskScore:
             print("⚠️ Failed to parse LLM response as JSON. Returning raw output.")
             return {"raw_response": response}
 
-    # ----------------------------
-    # LLM Risk Score Calculation
-    # ----------------------------
-    def calculate_risk_score(
+    def calculate_trans_risk(
         self,
-        transaction: dict,
-        rules_file="backend/risk/detect_suspicious_v2.json",
+        transaction: list[Transaction],
+        rules_json: dict,
         verbose=True,
-    ) -> dict:
+    ) -> RiskOutput:
         """
         Ask LLM to check if a transaction triggers behaviour rules and calculate risk_score.
         Returns JSON with triggered rules and risk_score.
         """
-        with open(rules_file, "r") as f:
-            rules_json = json.load(f)
 
         prompt = f"""
     You are a financial transaction analyst AI.
 
-    Given a single transaction and the following JSON of headers, importance weights, and behaviour rules:
+    Given the list of transactions and the following JSON of headers, importance weights, and behaviour rules:
 
     {json.dumps(rules_json, indent=2)}
 
@@ -180,10 +176,61 @@ class RiskScore:
         response = self.normalize_json_unicode(response)
 
         try:
-            return json.loads(response)
+            risk_result = json.loads(response.strip())
         except json.JSONDecodeError:
-            print("⚠️ Failed to parse LLM response as JSON. Returning raw output.")
-            return {"raw_response": response}
+            print("Output not JSON")
+            risk_result = {"triggered_rules": {}, "risk_score": 0}
+
+        validated = RiskOutput(
+            **{
+                "triggered_rules": risk_result.get("triggered_rules", {}),
+                "risk_score": float(risk_result.get("risk_score", 0)),
+            }
+        )
+        return validated
+
+    def calculate_batch_risk(
+        self,
+        transactions: list[Transaction],
+        rules_file="backend/risk/detect_suspicious_v2.json",
+    ) -> RiskOutput:
+        with open(rules_file, "r") as f:
+            rules_json = json.load(f)
+
+        start = time.time()
+        batch_size = 100
+        result = []
+
+        try:
+            for i in range(0, len(transactions), batch_size):
+                batch = transactions[i : i + batch_size]
+
+                print(
+                    f"Processing batch {i//batch_size + 1}: {len(batch)} transactions"
+                )
+
+                with ThreadPoolExecutor(max_workers=8) as executor:
+                    futures = {
+                        executor.submit(
+                            self.calculate_trans_risk, txn.model_dump(), rules_json
+                        ): txn
+                        for txn in batch
+                    }
+
+                    for future in as_completed(futures):
+                        try:
+                            risk_result = future.result()
+                            result.append(risk_result.risk_score)
+                        except Exception as e:
+                            print(f"Failed to process transaction: {e}")
+                            result.append(0.0)
+        except Exception as e:
+            print(f"Error in calculating batch risk: {e}")
+
+        final_risk_score = max(result) if result else 0.0
+        end = time.time()
+        print(f"Duration: {end - start:.4f} seconds")
+        return RiskOutput(triggered_rules={}, risk_score=final_risk_score)
 
     def create_suspicious(self):
         csv_file = self.load_csv("transactions_mock_1000_for_participants.csv")
@@ -211,7 +258,6 @@ class RiskScore:
             ),
         }
 
-        print(metrics)
         with open("backend/risk/metadata_risk.json", "r") as f:
             rules = json.load(f)
 
@@ -231,7 +277,7 @@ class RiskScore:
             - Reference the condition
         - For all headers that have at least one triggered condition, sum their risk_weight.
         - Divide by the number of triggered headers.
-        3. Return description and explanation
+        3. Return description and explanation. Inlclude list in the spelling error.
         4. Return JSON ONLY in the format:
         {{
             "triggered_rules": {{
@@ -250,10 +296,31 @@ class RiskScore:
         except json.JSONDecodeError:
             risk_result = {"triggered_rules": {}, "risk_score": 0}
 
-        return risk_result
+        validated = RiskOutput(
+            **{
+                "triggered_rules": risk_result.get("triggered_rules", {}),
+                "risk_score": float(risk_result.get("risk_score", 0)),
+            }
+        )
+
+        return validated
 
     def get_risk_score(self, document: dict):
         try:
             return self.format_risk(document.get("format_validation", {}))
         except Exception as e:
             raise e
+
+
+if __name__ == "__main__":
+    risk_score = RiskScore()
+    # loader = TransactionLoaderService("transactions_mock_1000_for_participants.csv")
+    # transactions = loader.load_all_transactions()
+    with open("backend/risk/detect_suspicious_v2.json", "r") as f:
+        rules_json = json.load(f)
+
+    with open("backend/risk/format_test.json", "r") as f:
+        test = json.load(f)
+
+    result = risk_score.calculate_batch_risk(test)
+    print(result)
