@@ -2,7 +2,7 @@ import os
 import json
 import pandas as pd
 from backend.agents.base_agent import BaseAgent
-from backend.schemas import RiskOutput
+
 
 class RiskScore:
     def __init__(self):
@@ -17,10 +17,11 @@ class RiskScore:
         except Exception as e:
             raise RuntimeError(f"Failed to load CSV file: {e}")
 
-    def prepare_llm_data(self, 
+    def prepare_llm_data(
+        self,
         df: pd.DataFrame,
         suspicious_col: str = "suspicion_determined_datetime",
-        normal_sample_size: int = 75
+        normal_sample_size: int = 75,
     ):
         """
         Prepare data for LLM: all suspicious rows + a sample of normal rows.
@@ -34,15 +35,15 @@ class RiskScore:
         else:
             normal_sample_df = normal_df
 
-        print(f"Prepared {len(suspicious_df) + len(normal_sample_df)} rows for LLM "
-            f"(Suspicious: {len(suspicious_df)}, Normal sampled: {len(normal_sample_df)})")
+        print(
+            f"Prepared {len(suspicious_df) + len(normal_sample_df)} rows for LLM "
+            f"(Suspicious: {len(suspicious_df)}, Normal sampled: {len(normal_sample_df)})"
+        )
         return suspicious_df, normal_sample_df
-
 
     def csv_to_string(self, df: pd.DataFrame) -> str:
         """Convert a DataFrame to CSV string for LLM input."""
         return df.to_csv(index=False)
-
 
     def save_json(self, data: dict, file_path: str):
         """Save a Python dictionary as a JSON file. Creates folder if it doesn't exist."""
@@ -54,29 +55,28 @@ class RiskScore:
             json.dump(data, f, indent=4)
         print(f"JSON saved to {file_path}")
 
-
     def normalize_json_unicode(self, json_str: str) -> str:
         """
         Replace special Unicode characters with standard ASCII equivalents.
         """
         replacements = {
-            "\u2011": "-",   # non-breaking hyphen → normal hyphen
-            "\u202f": " ",   # narrow non-breaking space → regular space
+            "\u2011": "-",  # non-breaking hyphen → normal hyphen
+            "\u202f": " ",  # narrow non-breaking space → regular space
             "\u00a0": " ",
-            "\u2013": " ", 
+            "\u2013": " ",
         }
         for old, new in replacements.items():
             json_str = json_str.replace(old, new)
         return json_str
 
-
     # ----------------------------
     # LLM Behavior Rule Generation
     # ----------------------------
-    def generate_behavior_rules(self,
+    def generate_behavior_rules(
+        self,
         df_suspicious,
         df_normal,
-        json_file_path="backend/tools/detect_suspicious_v2.json"
+        json_file_path="backend/tools/detect_suspicious_v2.json",
     ):
         """Generate importance weights and behaviour rules for all headers via LLM."""
         sus_string = self.csv_to_string(df_suspicious)
@@ -128,11 +128,15 @@ class RiskScore:
             print("⚠️ Failed to parse LLM response as JSON. Returning raw output.")
             return {"raw_response": response}
 
-
     # ----------------------------
     # LLM Risk Score Calculation
     # ----------------------------
-    def calculate_risk_score(self,transaction: dict, rules_file="backend/risk/detect_suspicious_v2.json", verbose=True) -> dict:
+    def calculate_risk_score(
+        self,
+        transaction: dict,
+        rules_file="backend/risk/detect_suspicious_v2.json",
+        verbose=True,
+    ) -> dict:
         """
         Ask LLM to check if a transaction triggers behaviour rules and calculate risk_score.
         Returns JSON with triggered rules and risk_score.
@@ -151,7 +155,7 @@ class RiskScore:
     {json.dumps(transaction, indent=2)}
 
     Tasks:
-    1. Check which behaviour rules are triggered. 
+    1. Check which behaviour rules are triggered.
     - Behaviour rules may involve conditions combining multiple headers.
     - Evaluate each rule based on the values of all relevant headers in the transaction.
     2. Calculate a risk score from 0 to 100:
@@ -180,7 +184,7 @@ class RiskScore:
         except json.JSONDecodeError:
             print("⚠️ Failed to parse LLM response as JSON. Returning raw output.")
             return {"raw_response": response}
-        
+
     def create_suspicious(self):
         csv_file = self.load_csv("transactions_mock_1000_for_participants.csv")
         suspicious, normal = self.prepare_llm_data(csv_file)
@@ -191,14 +195,20 @@ class RiskScore:
         spelling = format_metadata.get("spelling_mistakes", {})
         total_errors = spelling.get("spelling_errors_count", 0)
         characters_checked = spelling.get("characters_checked", 1)
-        spelling_error_rate = total_errors / characters_checked if characters_checked > 0 else 0
+        spelling_error_rate = (
+            total_errors / characters_checked if characters_checked > 0 else 0
+        )
 
         metrics = {
             "spelling_error_rate": spelling_error_rate,
-            "double_spacing_occurrences": format_metadata.get("double_spacing_occurrences", 0),
+            "double_spacing_occurrences": format_metadata.get(
+                "double_spacing_occurrences", 0
+            ),
             "irregular_fonts": format_metadata.get("irregular_fonts", []),
             "font_size_variants": format_metadata.get("font_size_variants", 1),
-            "indentation_inconsistent": format_metadata.get("indentation_inconsistent", False)
+            "indentation_inconsistent": format_metadata.get(
+                "indentation_inconsistent", False
+            ),
         }
 
         print(metrics)
@@ -221,7 +231,7 @@ class RiskScore:
             - Reference the condition
         - For all headers that have at least one triggered condition, sum their risk_weight.
         - Divide by the number of triggered headers.
-        3. Return description and explanation 
+        3. Return description and explanation
         4. Return JSON ONLY in the format:
         {{
             "triggered_rules": {{
@@ -238,7 +248,7 @@ class RiskScore:
         try:
             risk_result = json.loads(response.strip())
         except json.JSONDecodeError:
-            risk_result = {"triggered_rules": {},"risk_score": 0}
+            risk_result = {"triggered_rules": {}, "risk_score": 0}
 
         return risk_result
 
@@ -246,14 +256,4 @@ class RiskScore:
         try:
             return self.format_risk(document.get("format_validation", {}))
         except Exception as e:
-            raise
-
-
-
-# if __name__=="__main__":
-#     risk_score = RiskScore()
-#     with open("backend/risk/format_test.json", "r") as f:
-#         sample = json.load(f)
-#     result = risk_score.format_risk(sample.get("format_validation"))
-
-#     risk_score.save_json(result, "backend/risk/test_output.json")
+            raise e

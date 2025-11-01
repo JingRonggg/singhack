@@ -1,6 +1,4 @@
-from fastapi import APIRouter, Body, HTTPException, status
-from pydantic import BaseModel
-from typing import Dict, Any
+from fastapi import APIRouter, HTTPException, status
 import logging
 from backend.schemas import Transaction, RiskOutput
 from backend.tools.risk_score import RiskScore
@@ -8,6 +6,7 @@ from backend.tools.risk_score import RiskScore
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
 
 @router.post("/transaction-risk", response_model=RiskOutput)
 async def get_transaction_risk(transaction: Transaction):
@@ -70,20 +69,18 @@ async def get_transaction_risk(transaction: Transaction):
     try:
         risk_score = RiskScore()
         result = risk_score.calculate_risk_score(transaction)
-
         return result
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error calculating transaction risk: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
+
 
 @router.post("/format-risk", response_model=RiskOutput)
 async def get_format_risk(format_doc: dict):
-
     """
     EXAMPLE FORMAT OUTPUT:
     {
@@ -98,6 +95,7 @@ async def get_format_risk(format_doc: dict):
         "risk_score": 50.0
     }
     """
+
     try:
         risk_score = RiskScore()
         result = risk_score.get_risk_score(format_doc)
@@ -107,6 +105,5 @@ async def get_format_risk(format_doc: dict):
     except Exception as e:
         logger.error(f"Error calculating format risk: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )
