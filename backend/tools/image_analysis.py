@@ -10,6 +10,7 @@ from PIL.ExifTags import TAGS
 import hashlib
 import numpy as np
 from datetime import datetime
+from backend.util.config import load_config
 
 
 class ImageAnalysisResult(BaseModel):
@@ -340,9 +341,10 @@ def analyze_image_with_llm(
     Returns:
         ImageAnalysisResult: Comprehensive analysis results.
     """
-    api_key = os.getenv("GROK_API_KEY")
+    config = load_config()
+    api_key = config.get("GROQ_API_KEY")
     if not api_key:
-        raise ValueError("GROK_API_KEY environment variable is required")
+        raise ValueError("GROQ_API_KEY environment variable is required")
 
     # Use Llama 3.2 Vision model which has better vision capabilities
     llm = ChatGroq(
