@@ -1,6 +1,7 @@
 from uuid import UUID, uuid4
 from pydantic import BaseModel, Field
 from typing import Dict
+from .rule import Rule
 
 
 class RulesSchema(BaseModel):
@@ -10,7 +11,7 @@ class RulesSchema(BaseModel):
         default_factory=uuid4, description="Unique identifier for the ruleset"
     )
     created_at: int = Field(description="Timestamp of ruleset creation", default=1)
-    rules: Dict[str, str] = Field(
+    rules: Dict[str, Rule] = Field(
         description="Dictionary of rule numbers to rule descriptions"
     )
     source_urls: list[str] = Field(
