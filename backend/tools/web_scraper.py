@@ -1,9 +1,8 @@
-from langchain_core.tools import tool
 import requests
 from bs4 import BeautifulSoup
 from markdownify import markdownify as md
 from urllib.parse import urljoin, urlparse
-from typing import Set
+from typing import List, Optional, Set
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
 from collections import defaultdict
@@ -177,8 +176,7 @@ Extract at least 5 key rules if available.
     return result
 
 
-@tool
-def web_scraper() -> dict[str, dict[str, str]]:
+def web_scraper(extra_links: Optional[List[str]]) -> dict[str, dict[str, str]]:
     """
     A tool that scrapes web content from the provided URLs and extracts relevant rules or information.
     Args:
@@ -186,8 +184,9 @@ def web_scraper() -> dict[str, dict[str, str]]:
     Returns:
     dict: The extracted rules or information from the websites.
     """
-
     LINKS = ["https://www.mas.gov.sg/regulation"]
+    if extra_links:
+        LINKS.extend(extra_links)
 
     web_content = get_web_content(LINKS)
     rules = parsing_web_content_to_rules(web_content)

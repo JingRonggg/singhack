@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.controller import documents
+from backend.controller import documents, web_scraper
 from backend.util.logging_config import setup_logging
 
 # Configure logging
@@ -19,6 +19,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(documents.router, prefix="/api/upload")
+app.include_router(web_scraper.router, prefix="/api/scraper")
 
 
 @app.get("/")
