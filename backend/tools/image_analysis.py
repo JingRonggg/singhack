@@ -474,9 +474,9 @@ CRITICAL: Use actual numbers (not quoted strings) for scores and actual booleans
 {chr(10).join([f"- {k}: {v}" for k, v in reverse_search.items()])}
 
 **AI Mockup Detection (Heuristics):**
-{chr(10).join([f"- {indicator}" for indicator in mockup_detection.get('indicators', [])]) if mockup_detection else "- No heuristic analysis performed"}
-- Mockup Score: {mockup_detection.get('ai_mockup_score', 0) if mockup_detection else 0}/100
-- Likely AI Mockup: {mockup_detection.get('is_likely_mockup', False) if mockup_detection else False}
+{chr(10).join([f"- {indicator}" for indicator in mockup_detection.get("indicators", [])]) if mockup_detection else "- No heuristic analysis performed"}
+- Mockup Score: {mockup_detection.get("ai_mockup_score", 0) if mockup_detection else 0}/100
+- Likely AI Mockup: {mockup_detection.get("is_likely_mockup", False) if mockup_detection else False}
 
 **Analysis Tasks:**
 
@@ -728,9 +728,9 @@ def batch_image_analysis(image_paths: List[str]) -> Dict[str, Dict]:
     results = {}
 
     for image_path in image_paths:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Analyzing: {image_path}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         try:
             results[image_path] = image_analysis.invoke({"image_path": image_path})
