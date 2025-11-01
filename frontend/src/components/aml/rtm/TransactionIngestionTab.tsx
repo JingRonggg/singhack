@@ -30,12 +30,21 @@ interface EvaluationResult {
   requires_action: boolean;
 }
 
+interface TransactionRiskResult {
+  triggered_rules: Record<string, string[]>;
+  risk_score: number;
+}
+
 const TransactionIngestionTab = () => {
   const [singleTransaction, setSingleTransaction] = useState("");
   const [batchFile, setBatchFile] = useState<File | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [isBatchEvaluating, setIsBatchEvaluating] = useState(false);
   const [evaluationResults, setEvaluationResults] =
     useState<EvaluationResult | null>(null);
+  const [transactionRisk, setTransactionRisk] =
+    useState<TransactionRiskResult | null>(null);
+  const [isCalculatingRisk, setIsCalculatingRisk] = useState(false);
   const { toast } = useToast();
 
   const handleSingleIngestion = async () => {
@@ -50,29 +59,36 @@ const TransactionIngestionTab = () => {
 
     setIsEvaluating(true);
     setEvaluationResults(null);
+    setTransactionRisk(null);
 
     try {
       // Parse the JSON input
       const transactionData = JSON.parse(singleTransaction);
 
       // Fetch rules from the backend
-      const rulesResponse = await fetch("/api/dashboard/rules");
+      const rulesResponse = await fetch(
+        "http://localhost:8000/api/dashboard/rules"
+      );
       if (!rulesResponse.ok) {
         throw new Error("Failed to fetch rules");
       }
-      const rules = await rulesResponse.json();
+      const rulesData = await rulesResponse.json();
+      const rules = rulesData.rules;
 
       // Call the evaluate endpoint
-      const response = await fetch("/api/evaluation/evaluate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          transaction: transactionData,
-          rules: rules,
-        }),
-      });
+      const response = await fetch(
+        "http://localhost:8000/api/evaluation/evaluate",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            transaction: transactionData,
+            rules: rules,
+          }),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -101,6 +117,63 @@ const TransactionIngestionTab = () => {
     }
   };
 
+  const handleCalculateTransactionRisk = async () => {
+    if (!singleTransaction.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter transaction data in JSON format",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCalculatingRisk(true);
+
+    try {
+      // Parse the JSON input
+      const transactionData = JSON.parse(singleTransaction);
+
+      // Call the transaction-risk endpoint
+      const response = await fetch(
+        "http://localhost:8000/api/risk-score/transaction-risk",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(transactionData),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.detail || `Risk calculation failed: ${response.status}`
+        );
+      }
+
+      const riskData = await response.json();
+      setTransactionRisk(riskData);
+
+      toast({
+        title: "Risk Calculated",
+        description: `Transaction risk score: ${riskData.risk_score.toFixed(
+          2
+        )}`,
+      });
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Unknown error occurred";
+      toast({
+        title: "Risk Calculation Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsCalculatingRisk(false);
+    }
+  };
+
   const handleBatchIngestion = async () => {
     if (!batchFile) {
       toast({
@@ -111,15 +184,18 @@ const TransactionIngestionTab = () => {
       return;
     }
 
-    setIsEvaluating(true);
+    setIsBatchEvaluating(true);
 
     try {
       // Fetch rules from the backend
-      const rulesResponse = await fetch("/api/dashboard/rules");
+      const rulesResponse = await fetch(
+        "http://localhost:8000/api/dashboard/rules"
+      );
       if (!rulesResponse.ok) {
         throw new Error("Failed to fetch rules");
       }
-      const rules = await rulesResponse.json();
+      const rulesData = await rulesResponse.json();
+      const rules = rulesData.rules;
 
       // Create form data for file upload
       const formData = new FormData();
@@ -127,10 +203,13 @@ const TransactionIngestionTab = () => {
       formData.append("rules", JSON.stringify(rules));
 
       // Call the evaluate-batch endpoint
-      const response = await fetch("/api/evaluation/evaluate-batch", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        "http://localhost:8000/api/evaluation/evaluate-batch",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -154,7 +233,7 @@ const TransactionIngestionTab = () => {
         variant: "destructive",
       });
     } finally {
-      setIsEvaluating(false);
+      setIsBatchEvaluating(false);
     }
   };
 
@@ -196,18 +275,82 @@ const TransactionIngestionTab = () => {
             value={singleTransaction}
             onChange={(e) => setSingleTransaction(e.target.value)}
             rows={10}
-            disabled={isEvaluating}
+            disabled={isEvaluating || isCalculatingRisk}
           />
-          <Button onClick={handleSingleIngestion} disabled={isEvaluating}>
-            {isEvaluating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Evaluating...
-              </>
-            ) : (
-              "Evaluate Transaction"
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleSingleIngestion}
+              disabled={isEvaluating || isCalculatingRisk}
+            >
+              {isEvaluating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Evaluating...
+                </>
+              ) : (
+                "Evaluate Transaction"
+              )}
+            </Button>
+            <Button
+              onClick={handleCalculateTransactionRisk}
+              disabled={isEvaluating || isCalculatingRisk}
+              variant="outline"
+            >
+              {isCalculatingRisk ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Calculating...
+                </>
+              ) : (
+                "Calculate Risk Score"
+              )}
+            </Button>
+          </div>
+
+          {transactionRisk && (
+            <div className="mt-4 p-4 border rounded-lg space-y-3 bg-amber-50 dark:bg-amber-950">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">Transaction Risk Analysis</h3>
+                <span
+                  className={`text-lg font-bold px-3 py-1 rounded ${
+                    transactionRisk.risk_score > 70
+                      ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                      : transactionRisk.risk_score > 40
+                      ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
+                      : "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                  }`}
+                >
+                  Risk Score: {transactionRisk.risk_score.toFixed(2)}
+                </span>
+              </div>
+
+              {Object.keys(transactionRisk.triggered_rules).length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm">Triggered Rules:</h4>
+                  {Object.entries(transactionRisk.triggered_rules).map(
+                    ([rule, descriptions]) => (
+                      <div
+                        key={rule}
+                        className="bg-white dark:bg-gray-800 rounded p-3 space-y-1"
+                      >
+                        <div className="text-sm font-semibold capitalize">
+                          {rule.replace(/_/g, " ")}
+                        </div>
+                        {descriptions.map((desc, idx) => (
+                          <div
+                            key={idx}
+                            className="text-xs text-muted-foreground"
+                          >
+                            • {desc}
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {evaluationResults && (
             <div className="mt-4 p-4 border rounded-lg space-y-3">
@@ -318,7 +461,7 @@ const TransactionIngestionTab = () => {
               type="file"
               accept=".csv"
               onChange={handleFileChange}
-              disabled={isEvaluating}
+              disabled={isBatchEvaluating}
               className="cursor-pointer"
             />
             {batchFile && (
@@ -329,9 +472,9 @@ const TransactionIngestionTab = () => {
           </div>
           <Button
             onClick={handleBatchIngestion}
-            disabled={isEvaluating || !batchFile}
+            disabled={isBatchEvaluating || !batchFile}
           >
-            {isEvaluating ? (
+            {isBatchEvaluating ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Processing...
