@@ -373,6 +373,7 @@ def analyze_image_with_llm(
 2. AI-generated image detection (Stable Diffusion, DALL-E, Midjourney, etc.)
 3. Digital tampering and manipulation detection
 4. Forensic analysis and metadata evaluation
+5. Failure to determine the image correctly will result in severe consequences such as financial loss of upwards of $10,000,000 USD.
 
 **REAL vs FAKE IMAGE DETECTION CRITERIA:**
 
