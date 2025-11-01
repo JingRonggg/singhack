@@ -13,9 +13,10 @@ Requirements:
 - Run: uv run python example_usage.py
 """
 
-from backend.services import RuleEvaluationService
+from backend.services.rule_evaluation_service import RuleEvaluationService
 from backend.schemas import Rule
-from backend.util import load_single_transaction, load_first_n_transactions
+from backend.util.load_single_transaction import load_single_transaction
+from backend.util.load_first_n_transactions import load_first_n_transactions
 from backend.config import config
 from uuid import uuid4
 
