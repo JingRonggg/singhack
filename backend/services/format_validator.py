@@ -1,10 +1,69 @@
 import fitz  # PyMuPDF
 import os
 import re
-from spellchecker import SpellChecker
+from symspellpy import SymSpell, Verbosity
 import logging
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+# Initialize SymSpell instance globally to avoid reloading dictionaries
+_symspell_instance = None
+
+
+def get_symspell_instance():
+    """Get or create a SymSpell instance with multi-language dictionaries."""
+    global _symspell_instance
+
+    if _symspell_instance is not None:
+        return _symspell_instance
+
+    logger.info("Initializing SymSpell with multi-language dictionaries")
+    sym_spell = SymSpell(max_dictionary_edit_distance=2, prefix_length=7)
+
+    # Define dictionary paths relative to this file
+    dict_dir = Path(__file__).parent.parent / "data" / "dictionaries"
+
+    # Dictionary files mapping
+    # Format: (filename, language_name)
+    dictionaries = [
+        ("frequency_dictionary_en_82_765.txt", "English"),
+        ("de_50k.txt", "German"),
+        ("fr-100k.txt", "French"),
+        ("it-100k.txt", "Italian"),
+        ("rm.txt", "Romansh"),
+    ]
+
+    loaded_count = 0
+    for dict_file, lang_name in dictionaries:
+        dict_path = dict_dir / dict_file
+        if dict_path.exists():
+            try:
+                # Load dictionary with frequency counts
+                # Format: word<space>frequency
+                if sym_spell.load_dictionary(
+                    str(dict_path), term_index=0, count_index=1
+                ):
+                    loaded_count += 1
+                    logger.info(f"Loaded {lang_name} dictionary: {dict_file}")
+                else:
+                    logger.warning(
+                        f"Failed to load {lang_name} dictionary: {dict_file}"
+                    )
+            except Exception as e:
+                logger.error(f"Error loading {lang_name} dictionary {dict_file}: {e}")
+        else:
+            logger.warning(f"{lang_name} dictionary not found: {dict_path}")
+
+    if loaded_count == 0:
+        logger.error(
+            "No dictionaries were loaded! Spelling check will not work properly."
+        )
+    else:
+        logger.info(f"Successfully loaded {loaded_count} dictionaries")
+
+    _symspell_instance = sym_spell
+    return _symspell_instance
 
 
 def detect_double_spacing(text):
@@ -58,7 +117,7 @@ def detect_indentation_issues(pdf_path):
 
 
 def detect_spelling_mistakes(text, max_chars=5000):
-    """Detect spelling mistakes in the extracted text using pyspellchecker."""
+    """Detect spelling mistakes in the extracted text using SymSpell with multi-language support."""
     if not text:
         logger.warning("No text provided for spelling check")
         return {
@@ -71,30 +130,56 @@ def detect_spelling_mistakes(text, max_chars=5000):
     logger.info(f"Starting spelling check on text (length: {len(text)})")
     logger.debug(f"Text preview for spell check (first 300 chars): {text[:300]}")
 
-    spell = SpellChecker()
+    sym_spell = get_symspell_instance()
 
     # Limit text length for performance
     text_to_check = text[:max_chars]
     logger.info(f"Checking {len(text_to_check)} characters for spelling errors")
 
-    words = re.findall(r"\b[a-zA-Z]+\b", text_to_check)
+    # Extract words (including words with hyphens and apostrophes)
+    words = re.findall(
+        r"\b[a-zA-ZàáâäèéêëìíîïòóôöùúûüÀÁÂÄÈÉÊËÌÍÎÏÒÓÔÖÙÚÛÜßçñÇÑ'-]+\b", text_to_check
+    )
     logger.info(f"Extracted {len(words)} words for spell checking")
     logger.debug(f"Words extracted: {words[:50]}...")  # Log first 50 words
 
-    # Find misspelled words
-    misspelled = spell.unknown(words)
-    logger.info(f"Found {len(misspelled)} misspelled words")
-    logger.debug(f"Misspelled words: {list(misspelled)}")
+    # Find misspelled words using SymSpell
+    misspelled = []
+    misspelled_details = {}
+
+    for word in words:
+        # Skip very short words (1-2 chars) and numbers
+        if len(word) <= 2 or word.isdigit():
+            continue
+
+        # Lookup word in dictionary
+        suggestions = sym_spell.lookup(
+            word.lower(), Verbosity.CLOSEST, max_edit_distance=2
+        )
+
+        # If no exact match found or the word itself is not in suggestions, it's misspelled
+        if not suggestions or (
+            suggestions and suggestions[0].term.lower() != word.lower()
+        ):
+            if word not in misspelled_details:  # Avoid duplicates
+                misspelled.append(word)
+                # Get top 3 suggestions
+                top_suggestions = (
+                    [s.term for s in suggestions[:3]] if suggestions else []
+                )
+                misspelled_details[word] = top_suggestions
+
+    logger.info(f"Found {len(misspelled)} unique misspelled words")
+    logger.debug(f"Misspelled words: {misspelled}")
 
     # Build error details
     spelling_errors = []
-    for word in list(misspelled)[:10]:  # Limit to first 10 errors
-        suggestions = spell.candidates(word)
+    for word in misspelled[:10]:  # Limit to first 10 errors for response
         spelling_errors.append(
             {
                 "word": word,
                 "message": f"Possible spelling mistake: '{word}'",
-                "replacements": list(suggestions)[:3] if suggestions else [],
+                "replacements": misspelled_details.get(word, []),
             }
         )
 

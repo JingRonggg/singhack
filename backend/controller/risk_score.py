@@ -76,7 +76,8 @@ async def get_transaction_risk(transaction: Transaction):
         risk_score = RiskScore()
         with open("backend/risk/detect_suspicious_v2.json", "r") as f:
             rules_json = json.load(f)
-        result = risk_score.calculate_trans_risk(transaction, rules_json)
+        transaction_dict = transaction.model_dump()
+        result = risk_score.calculate_trans_risk(transaction_dict, rules_json)
         return result
     except HTTPException:
         raise

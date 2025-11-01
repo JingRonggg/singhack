@@ -18,7 +18,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { Upload } from "lucide-react";
+import { Upload, AlertTriangle } from "lucide-react";
 import { DocumentAnalysis } from "../DocumentAnalysisSection";
 
 interface DocumentUploadTabProps {
@@ -28,6 +28,7 @@ interface DocumentUploadTabProps {
 
 const DocumentUploadTab = ({ results, setResults }: DocumentUploadTabProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [calculatingRisk, setCalculatingRisk] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,6 +79,77 @@ const DocumentUploadTab = ({ results, setResults }: DocumentUploadTabProps) => {
       } finally {
         setIsLoading(false);
       }
+    }
+  };
+
+  const handleCalculateRisk = async (fileId: string) => {
+    setCalculatingRisk(fileId);
+
+    try {
+      const result = results.find((r) => r.file_id === fileId);
+      if (!result) {
+        throw new Error("Document not found");
+      }
+
+      // Prepare the input for the format-risk endpoint - full document structure
+      const formatDoc = {
+        file_id: result.file_id,
+        document_metadata: result.document_metadata,
+        document_structure: result.document_structure,
+        format_validation: result.format_validation,
+      };
+
+      console.log(formatDoc);
+      const response = await fetch(
+        "http://localhost:8000/api/risk-score/format-risk",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formatDoc),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.detail || `Risk calculation failed: ${response.status}`
+        );
+      }
+
+      const riskData = await response.json();
+
+      // Update the result with risk analysis
+      setResults(
+        results.map((r) =>
+          r.file_id === fileId
+            ? {
+                ...r,
+                risk_analysis: {
+                  triggered_rules: riskData.triggered_rules,
+                  risk_score: riskData.risk_score,
+                },
+              }
+            : r
+        )
+      );
+
+      toast({
+        title: "Risk Calculated",
+        description: `Risk score: ${riskData.risk_score.toFixed(2)}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Risk Calculation Failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "An error occurred during risk calculation",
+        variant: "destructive",
+      });
+    } finally {
+      setCalculatingRisk(null);
     }
   };
 
@@ -305,6 +377,87 @@ const DocumentUploadTab = ({ results, setResults }: DocumentUploadTabProps) => {
                       </div>
                     )}
                   </div>
+
+                  {/* Risk Analysis Button */}
+                  {!result.risk_analysis && (
+                    <div className="border-t pt-3">
+                      <Button
+                        onClick={() => handleCalculateRisk(result.file_id)}
+                        disabled={calculatingRisk === result.file_id}
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                      >
+                        <AlertTriangle className="h-4 w-4 mr-2" />
+                        {calculatingRisk === result.file_id
+                          ? "Calculating Risk..."
+                          : "Calculate Risk Score"}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Risk Analysis Results */}
+                  {result.risk_analysis && (
+                    <div className="border-t pt-3 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium text-sm">Risk Analysis</div>
+                        <Badge
+                          variant={
+                            result.risk_analysis.risk_score > 70
+                              ? "destructive"
+                              : result.risk_analysis.risk_score > 40
+                              ? "secondary"
+                              : "outline"
+                          }
+                          className="text-base px-3 py-1"
+                        >
+                          Risk Score:{" "}
+                          {result.risk_analysis.risk_score.toFixed(2)}
+                        </Badge>
+                      </div>
+
+                      {Object.keys(result.risk_analysis.triggered_rules)
+                        .length > 0 && (
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium text-muted-foreground">
+                            Triggered Rules:
+                          </div>
+                          {Object.entries(
+                            result.risk_analysis.triggered_rules
+                          ).map(([rule, descriptions]) => (
+                            <div
+                              key={rule}
+                              className="bg-destructive/10 rounded-lg p-3 space-y-1"
+                            >
+                              <div className="text-sm font-semibold capitalize">
+                                {rule.replace(/_/g, " ")}
+                              </div>
+                              {descriptions.map((desc, idx) => (
+                                <div
+                                  key={idx}
+                                  className="text-xs text-muted-foreground"
+                                >
+                                  {desc}
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <Button
+                        onClick={() => handleCalculateRisk(result.file_id)}
+                        disabled={calculatingRisk === result.file_id}
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                      >
+                        {calculatingRisk === result.file_id
+                          ? "Recalculating..."
+                          : "Recalculate Risk Score"}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

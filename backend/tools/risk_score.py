@@ -7,7 +7,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from backend.services.transaction_loader import TransactionLoaderService
 import time
 
-
 class RiskScore:
     def __init__(self):
         self.agent = BaseAgent(tools=[], verbose=True)
@@ -188,12 +187,8 @@ class RiskScore:
             }
         )
         return validated
-
-    def calculate_batch_risk(
-        self,
-        transactions: list[Transaction],
-        rules_file="backend/risk/detect_suspicious_v2.json",
-    ) -> RiskOutput:
+    
+    def calculate_batch_risk(self, transactions: list[Transaction], rules_file="backend/risk/detect_suspicious_v2.json")->RiskOutput:
         with open(rules_file, "r") as f:
             rules_json = json.load(f)
 
@@ -203,19 +198,12 @@ class RiskScore:
 
         try:
             for i in range(0, len(transactions), batch_size):
-                batch = transactions[i : i + batch_size]
+                batch = transactions[i:i+batch_size]
 
-                print(
-                    f"Processing batch {i//batch_size + 1}: {len(batch)} transactions"
-                )
+                print(f"Processing batch {i//batch_size + 1}: {len(batch)} transactions")
 
                 with ThreadPoolExecutor(max_workers=8) as executor:
-                    futures = {
-                        executor.submit(
-                            self.calculate_trans_risk, txn.model_dump(), rules_json
-                        ): txn
-                        for txn in batch
-                    }
+                    futures = {executor.submit(self.calculate_trans_risk, txn.model_dump(), rules_json): txn for txn in batch}
 
                     for future in as_completed(futures):
                         try:
@@ -228,7 +216,7 @@ class RiskScore:
             print(f"Error in calculating batch risk: {e}")
 
         final_risk_score = max(result) if result else 0.0
-        end = time.time()
+        end=time.time()
         print(f"Duration: {end - start:.4f} seconds")
         return RiskOutput(triggered_rules={}, risk_score=final_risk_score)
 
@@ -312,7 +300,7 @@ class RiskScore:
             raise e
 
 
-if __name__ == "__main__":
+if __name__=="__main__":
     risk_score = RiskScore()
     # loader = TransactionLoaderService("transactions_mock_1000_for_participants.csv")
     # transactions = loader.load_all_transactions()
