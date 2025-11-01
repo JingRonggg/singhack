@@ -1,0 +1,34 @@
+{
+  "format": [
+    {
+      "factor": "spelling_error_rate",
+      "condition": "spelling_error_rate > 0.02",
+      "risk_weight": 0.8,
+      "description": "High spelling error rate — indicates poor document quality, potential carelessness, or AI-generated content. Frequent spelling mistakes may reduce document credibility, increase the risk of misinterpretation, and suggest automated or low-quality generation processes that may bypass human review."
+    },
+    {
+      "factor": "double_spacing_occurrences",
+      "condition": "double_spacing_occurrences > 3",
+      "risk_weight": 0.1,
+      "description": "Excessive double spacing — may indicate formatting inconsistencies, careless editing, or attempts to manipulate document layout. While low risk, consistent double spacing across multiple documents could signal automated generation or poor document hygiene."
+    },
+    {
+      "factor": "irregular_fonts",
+      "condition": "len(irregular_fonts) > 0",
+      "risk_weight": 0.5,
+      "description": "Irregular fonts detected — different fonts within the same document may indicate copy-pasting from multiple sources, tampering, or attempts to disguise modifications. This can affect readability and suggests inconsistent or suspicious editing practices."
+    },
+    {
+      "factor": "font_size_variants",
+      "condition": "font_size_variants > 3",
+      "risk_weight": 0.2,
+      "description": "Too many font size variants — inconsistent formatting across headings, paragraphs, or tables may reflect poor document structure, merging of multiple documents, or attempts to hide or emphasize certain content. This can reduce document readability and raise concerns about authenticity."
+    },
+    {
+      "factor": "indentation_inconsistent",
+      "condition": "indentation_inconsistent == True",
+      "risk_weight": 0.2,
+      "description": "Inconsistent indentation — may indicate careless formatting, automatic document generation, or manual tampering. Misaligned text structures can make the document harder to read, suggest manipulation, and reduce overall trustworthiness."
+    }
+  ]
+}
