@@ -1,7 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from typing import List, Optional
 from pydantic import BaseModel
 import logging
+import os
+from uuid import uuid4
 
 from backend.schemas import (
     Transaction,
@@ -11,10 +13,15 @@ from backend.schemas import (
 )
 from backend.services.rule_evaluation_service import RuleEvaluationService
 from backend.services.database_service import DatabaseService
+from backend.services.transaction_loader import TransactionLoaderService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# Upload directory for CSV files
+UPLOAD_DIR = "data/uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 class EvaluationRequest(BaseModel):
@@ -117,6 +124,129 @@ async def evaluate_transaction(request: EvaluationRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Evaluation failed: {str(e)}")
+
+
+@router.post("/evaluate-batch")
+async def evaluate_batch_transactions(
+    file: UploadFile = File(...), rules: Optional[str] = Form(None)
+):
+    """
+    Evaluate multiple transactions from a CSV file against compliance rules.
+
+    Args:
+        file: CSV file containing transactions (must match Transaction schema)
+        rules: Optional JSON string containing list of Rule objects
+
+    Returns:
+        List of BatchEvaluationResponse objects for each transaction
+
+    Example:
+        POST /api/evaluation/evaluate-batch
+        - file: transactions.csv (multipart/form-data)
+        - rules: JSON array of rules (optional, can be loaded from DB in future)
+    """
+    # Validate file type
+    if not file.filename.endswith(".csv"):
+        raise HTTPException(status_code=400, detail="File must be a CSV file")
+
+    # Save uploaded CSV file
+    file_id = str(uuid4())
+    file_path = os.path.join(UPLOAD_DIR, f"{file_id}_{file.filename}")
+
+    try:
+        with open(file_path, "wb") as f:
+            f.write(await file.read())
+
+        # Parse rules if provided
+        parsed_rules = None
+        if rules:
+            import json
+
+            try:
+                rules_data = json.loads(rules)
+                parsed_rules = [Rule(**rule) for rule in rules_data]
+            except Exception as e:
+                raise HTTPException(
+                    status_code=400, detail=f"Invalid rules JSON: {str(e)}"
+                )
+
+        # Validate that rules are provided
+        if not parsed_rules:
+            raise HTTPException(
+                status_code=400,
+                detail="Rules must be provided (either as 'rules' parameter or via rule_ids)",
+            )
+
+        # Load all transactions from CSV
+        loader = TransactionLoaderService(file_path)
+        transactions = loader.load_all_transactions()
+
+        if not transactions:
+            raise HTTPException(
+                status_code=400, detail="No valid transactions found in CSV file"
+            )
+
+        logger.info(f"Loaded {len(transactions)} transactions from CSV")
+
+        # Initialize evaluation service
+        service = RuleEvaluationService()
+
+        # Evaluate each transaction
+        results = []
+        for transaction in transactions:
+            try:
+                result = service.evaluate_transaction_against_rules(
+                    transaction, parsed_rules
+                )
+
+                # Store evaluation results in database
+                try:
+                    db_service = DatabaseService()
+                    db_service.store_complete_evaluation(
+                        transaction=transaction,
+                        rules=parsed_rules,
+                        batch_response=result,
+                    )
+                    logger.info(
+                        f"Stored evaluation results for transaction {transaction.transaction_id}"
+                    )
+                except Exception as db_error:
+                    logger.error(
+                        f"Failed to store evaluation in database for {transaction.transaction_id}: {db_error}"
+                    )
+
+                results.append(result)
+
+            except Exception as e:
+                logger.error(
+                    f"Failed to evaluate transaction {transaction.transaction_id}: {e}"
+                )
+                # Continue with other transactions even if one fails
+                results.append(
+                    {"transaction_id": transaction.transaction_id, "error": str(e)}
+                )
+
+        return {
+            "total_transactions": len(transactions),
+            "successful_evaluations": len([r for r in results if "error" not in r]),
+            "failed_evaluations": len([r for r in results if "error" in r]),
+            "results": results,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Batch evaluation failed: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Batch evaluation failed: {str(e)}"
+        )
+    finally:
+        # Clean up uploaded file
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                logger.warning(f"Failed to remove uploaded file {file_path}: {e}")
 
 
 @router.post("/evaluate-single", response_model=RuleEvaluationResult)
