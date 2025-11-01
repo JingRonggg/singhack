@@ -346,9 +346,9 @@ def analyze_image_with_llm(
     if not api_key:
         raise ValueError("GROQ_API_KEY environment variable is required")
 
-    # Use Llama 3.2 Vision model which has better vision capabilities
+    # Use Llama 4 Scout Vision model for image analysis
     llm = ChatGroq(
-        model="llama-3.2-90b-vision-preview",
+        model="meta-llama/llama-4-scout-17b-16e-instruct",  # Latest Llama 4 vision model
         api_key=api_key,
         temperature=0.1,  # Lower temperature for more consistent detection
     )
@@ -359,9 +359,6 @@ def analyze_image_with_llm(
         with Image.open(image_path) as image:
             image_format = image.format
             image_size = image.size
-
-        # Encode image for vision model
-        base64_image = encode_image_to_base64(image_path)
 
     except Exception as e:
         raise ValueError(f"Failed to process image: {str(e)}")
@@ -455,11 +452,8 @@ You MUST respond with ONLY a valid JSON object that matches this exact schema:
 CRITICAL: Use actual numbers (not quoted strings) for scores and actual booleans (true/false, not "true"/"false") in the JSON."""
     )
 
-    human_message = HumanMessage(
-        content=[
-            {
-                "type": "text",
-                "text": f"""Perform a comprehensive forensic analysis of this image:
+    # Create the text prompt
+    text_prompt = f"""Perform a comprehensive forensic analysis of this image:
 
 **Image Information:**
 - Format: {image_format}
@@ -552,14 +546,12 @@ CRITICAL: Use actual numbers (not quoted strings) for scores and actual booleans
 - authenticity_score: Must be a NUMBER (0-100), not a string
 - ai_confidence: Must be a NUMBER (0-100), not a string
 - is_ai_generated: Must be a BOOLEAN (true/false), not a string
-- is_tampered: Must be a BOOLEAN (true/false), not a string""",
-            },
-            {
-                "type": "image_url",
-                "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
-            },
-        ]
-    )
+- is_tampered: Must be a BOOLEAN (true/false), not a string
+
+Based on the technical analysis data provided above, provide your expert assessment as a JSON object."""
+
+    # Create HumanMessage with just text content (no image since model doesn't support vision)
+    human_message = HumanMessage(content=text_prompt)
 
     try:
         response = llm.invoke([system_message, human_message])
