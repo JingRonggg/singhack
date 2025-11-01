@@ -61,9 +61,37 @@ class RuleEvaluationService:
 Transaction ID: {transaction.transaction_id}
 Amount: {transaction.amount} {transaction.currency}
 Originator: {transaction.originator_name} ({transaction.originator_country})
+Originator Account: {transaction.originator_account}
 Beneficiary: {transaction.beneficiary_name} ({transaction.beneficiary_country})
+Beneficiary Account: {transaction.beneficiary_account}
 Jurisdiction: {transaction.booking_jurisdiction}
 Regulator: {transaction.regulator}
+Channel: {transaction.channel}
+Product Type: {transaction.product_type}
+Booking DateTime: {transaction.booking_datetime}
+Value Date: {transaction.value_date}
+
+SWIFT Information:
+SWIFT MT: {transaction.swift_mt}
+Ordering Institution BIC: {transaction.ordering_institution_bic}
+Beneficiary Institution BIC: {transaction.beneficiary_institution_bic}
+SWIFT F50 Present: {transaction.swift_f50_present}
+SWIFT F59 Present: {transaction.swift_f59_present}
+SWIFT F70 Purpose: {transaction.swift_f70_purpose}
+SWIFT F71 Charges: {transaction.swift_f71_charges}
+Travel Rule Complete: {transaction.travel_rule_complete}
+
+FX Information:
+FX Indicator: {transaction.fx_indicator}
+FX Base Currency: {transaction.fx_base_ccy}
+FX Quote Currency: {transaction.fx_quote_ccy}
+FX Applied Rate: {transaction.fx_applied_rate}
+FX Market Rate: {transaction.fx_market_rate}
+FX Spread (BPS): {transaction.fx_spread_bps}
+FX Counterparty: {transaction.fx_counterparty}
+
+Customer Information:
+Customer ID: {transaction.customer_id}
 Customer Type: {transaction.customer_type}
 Customer Risk Rating: {transaction.customer_risk_rating}
 Customer is PEP: {transaction.customer_is_pep}
@@ -72,15 +100,25 @@ KYC Due Date: {transaction.kyc_due_date}
 EDD Required: {transaction.edd_required}
 EDD Performed: {transaction.edd_performed}
 Source of Wealth Documented: {transaction.sow_documented}
+
+Suitability & Advisory:
+Is Advised: {transaction.is_advised}
+Product Complex: {transaction.product_complex}
+Client Risk Profile: {transaction.client_risk_profile}
+Suitability Assessed: {transaction.suitability_assessed}
+Suitability Result: {transaction.suitability_result}
+Product Has VA Exposure: {transaction.product_has_va_exposure}
+VA Disclosure Provided: {transaction.va_disclosure_provided}
+
+Cash & Screening:
+Cash ID Verified: {transaction.cash_id_verified}
+Daily Cash Total (Customer): {transaction.daily_cash_total_customer}
+Daily Cash Transaction Count: {transaction.daily_cash_txn_count}
 Purpose Code: {transaction.purpose_code}
 Narrative: {transaction.narrative}
 Sanctions Screening: {transaction.sanctions_screening}
-Daily Cash Total (Customer): {transaction.daily_cash_total_customer}
-Daily Cash Transaction Count: {transaction.daily_cash_txn_count}
-Channel: {transaction.channel}
-Product Type: {transaction.product_type}
-Booking DateTime: {transaction.booking_datetime}
-Value Date: {transaction.value_date}
+Suspicion Determined DateTime: {transaction.suspicion_determined_datetime}
+STR Filed DateTime: {transaction.str_filed_datetime}
         """.strip()
 
         # Create the evaluation prompt
