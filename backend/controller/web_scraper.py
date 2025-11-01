@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Body, HTTPException, status
 from pydantic import BaseModel, HttpUrl, field_validator
 from typing import List, Dict, Optional
 import logging
@@ -59,7 +59,7 @@ class WebScraperRequest(BaseModel):
     description="Scrapes provided URLs and extracts regulatory rules and guidelines using AI. Returns a dictionary with domains as keys and RulesSchema as values.",
 )
 async def scrape_web_content(
-    request: Optional[WebScraperRequest] = None,
+    request: Optional[WebScraperRequest] = Body(None),
 ) -> Dict[str, RulesSchema]:
     """
     Endpoint to scrape web content and extract rules.
@@ -75,7 +75,10 @@ async def scrape_web_content(
     """
     try:
         # Run the web scraper with optional URLs
-        rules_data = web_scraper(extra_links=request.urls)
+        if request is None:
+            rules_data = web_scraper(extra_links=None)
+        else:
+            rules_data = web_scraper(extra_links=request.urls)
 
         if not rules_data:
             raise HTTPException(

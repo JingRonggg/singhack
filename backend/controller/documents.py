@@ -4,6 +4,7 @@ import os
 
 from backend.services.document_extractor import extract_with_unstructured
 from backend.services.format_validator import run_format_validation
+from backend.tools.image_analysis import image_analysis
 
 router = APIRouter()
 UPLOAD_DIR = "data/uploads"
@@ -44,3 +45,101 @@ async def upload_and_validate(file: UploadFile = File(...)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
+
+
+@router.post("/image")
+async def upload_and_analyze_image(file: UploadFile = File(...)):
+    """
+    Upload an image file and perform comprehensive forensic analysis.
+
+    Features:
+    - Authenticity verification
+    - AI-generated detection
+    - Tampering detection
+    - Forensic analysis with metadata and pixel-level inspection
+    """
+    # Validate file type
+    allowed_extensions = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp"}
+    file_ext = os.path.splitext(file.filename)[1].lower()
+
+    if file_ext not in allowed_extensions:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type. Allowed types: {', '.join(allowed_extensions)}",
+        )
+
+    # Save file
+    file_id = str(uuid4())
+    file_path = os.path.join(UPLOAD_DIR, f"{file_id}_{file.filename}")
+
+    try:
+        with open(file_path, "wb") as f:
+            f.write(await file.read())
+
+        # Run image analysis
+        analysis_result = image_analysis.invoke({"image_path": file_path})
+
+        # Check if there was an error in the analysis
+        if "error" in analysis_result:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Image analysis failed: {analysis_result['error']}",
+            )
+
+        # Construct response
+        response = {
+            "file_id": file_id,
+            "filename": file.filename,
+            "file_path": file_path,
+            "analysis": {
+                "authenticity": {
+                    "score": analysis_result["authenticity_score"],
+                    "status": (
+                        "authentic"
+                        if analysis_result["authenticity_score"] >= 70
+                        else (
+                            "suspicious"
+                            if analysis_result["authenticity_score"] >= 40
+                            else "likely_fraudulent"
+                        )
+                    ),
+                },
+                "ai_detection": {
+                    "is_ai_generated": analysis_result["is_ai_generated"],
+                    "confidence": analysis_result["ai_confidence"],
+                    "risk_level": (
+                        "high"
+                        if analysis_result["is_ai_generated"]
+                        and analysis_result["ai_confidence"] >= 70
+                        else "medium"
+                        if analysis_result["is_ai_generated"]
+                        else "low"
+                    ),
+                },
+                "tampering": {
+                    "is_tampered": analysis_result["is_tampered"],
+                    "indicators": analysis_result["tampering_indicators"],
+                    "indicator_count": len(analysis_result["tampering_indicators"]),
+                },
+                "forensics": {
+                    "metadata": analysis_result["metadata_analysis"],
+                    "findings": analysis_result["forensic_findings"],
+                    "reverse_search": analysis_result.get("reverse_search_results", {}),
+                },
+                "recommendations": analysis_result["recommendations"],
+                "timestamp": analysis_result["timestamp"],
+            },
+        }
+
+        return response
+
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        # Clean up file if processing failed
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        raise HTTPException(
+            status_code=500, detail=f"Image processing failed: {str(e)}"
+        )

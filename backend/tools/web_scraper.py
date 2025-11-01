@@ -276,7 +276,6 @@ def web_scraper(extra_links: Optional[List[str]]) -> dict[str, dict[str, str]]:
     LINKS = ["https://www.mas.gov.sg/regulation"]
     if extra_links:
         LINKS.extend(extra_links)
-
     web_content = get_web_content(LINKS)
     rules = parsing_web_content_to_rules(web_content)
     return rules
