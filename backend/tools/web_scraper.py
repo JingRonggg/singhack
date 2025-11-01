@@ -4,12 +4,13 @@ from bs4 import BeautifulSoup
 from markdownify import markdownify as md
 from urllib.parse import urljoin, urlparse
 from typing import Set
-import os
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
-from pydantic import BaseModel, Field
 from collections import defaultdict
-from typing import Dict
+
+from backend.util.config import load_config
+from backend.schemas.rules import RulesSchema, RulesExtractionSchema
+from datetime import datetime
 
 
 def get_web_content(website_urls: list[str], max_pages: int = 10) -> dict[str, str]:
@@ -79,18 +80,6 @@ def get_web_content(website_urls: list[str], max_pages: int = 10) -> dict[str, s
     return content_dict
 
 
-# TODO: UPDATE THE SCHEMA TO WHAT PING WEE DEFINES IT IN THE SCHEMA FOLDER
-class RulesSchema(BaseModel):
-    """Schema for extracted rules from web content."""
-
-    version: int = Field(description="Version number of the ruleset", default=1)
-    rules: Dict[str, str] = Field(
-        description="Dictionary of rule numbers to rule descriptions"
-    )
-    pages_processed: int = Field(description="Number of pages processed")
-    source_urls: list[str] = Field(description="List of source URLs")
-
-
 def parsing_web_content_to_rules(
     web_content: dict[str, str],
 ) -> dict[str, dict[str, str]]:
@@ -103,9 +92,8 @@ def parsing_web_content_to_rules(
     Returns:
     dict[str, dict[str, str]]: The extracted rules or information grouped by domain.
     """
-
-    # TODO: update api key management to use config loader with secret strings
-    api_key = os.getenv("GROQ_API_KEY")
+    configs = load_config()
+    api_key = configs.get("GROQ_API_KEY")
     if not api_key:
         raise ValueError("GROQ_API_KEY environment variable is required")
     llm = ChatGroq(
@@ -113,7 +101,7 @@ def parsing_web_content_to_rules(
         api_key=api_key,
         temperature=0.3,
     )
-    structured_llm = llm.with_structured_output(RulesSchema)
+    structured_llm = llm.with_structured_output(RulesExtractionSchema)
 
     domain_content = defaultdict(list)
     for url, content in web_content.items():
@@ -128,11 +116,15 @@ def parsing_web_content_to_rules(
         combined_content = "\n\n---PAGE SEPARATOR---\n\n".join(
             [f"URL: {page['url']}\n\n{page['content'][:6000]}" for page in pages]
         )
+
+        source_urls = list(set([page["url"] for page in pages]))
+
         system_message = SystemMessage(
             content="""You are a regulatory compliance expert.
 Extract and consolidate rules and regulations from web content across multiple pages.
 Extract clear, concise regulatory rules, guidelines, and requirements.
-Number the rules sequentially starting from "1" as strings."""
+Number the rules sequentially starting from "1" as strings.
+ONLY extract the rules field - other metadata will be added automatically."""
         )
 
         human_message = HumanMessage(
@@ -157,24 +149,30 @@ Extract at least 5 key rules if available.
         try:
             response = structured_llm.invoke([system_message, human_message])
 
-            parsed_data = response.dict()
+            rules_schema = RulesSchema(
+                created_at=int(datetime.now().timestamp()),
+                rules=response.rules,
+                source_urls=[domain],
+            )
 
-            parsed_data["pages_processed"] = len(pages)
-            parsed_data["source_urls"] = [page["url"] for page in pages]
-
-            result[domain] = parsed_data
+            # Convert to dict for result
+            parsed_data = rules_schema.model_dump()
 
             print(f"Successfully parsed {len(pages)} pages from {domain}")
             print(f"Extracted {len(parsed_data['rules'])} rules")
+            print(f"Ruleset ID: {parsed_data['ruleset_id']}")
+
+            result[domain] = parsed_data
 
         except Exception as e:
             print(f"Error parsing content from {domain}: {str(e)}")
-            result[domain] = {
-                "version": 1,
-                "pages_processed": len(pages),
-                "source_urls": [page["url"] for page in pages],
-                "rules": {"error": f"Failed to parse: {str(e)}"},
-            }
+            # Create error schema with proper metadata
+            error_schema = RulesSchema(
+                created_at=int(datetime.now().timestamp()),
+                rules={"error": f"Failed to parse: {str(e)}"},
+                source_urls=source_urls,
+            )
+            result[domain] = error_schema.model_dump()
 
     return result
 
