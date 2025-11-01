@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from typing import List, Optional
 from pydantic import BaseModel
 import logging
@@ -127,23 +127,19 @@ async def evaluate_transaction(request: EvaluationRequest):
 
 
 @router.post("/evaluate-batch")
-async def evaluate_batch_transactions(
-    file: UploadFile = File(...), rules: Optional[str] = Form(None)
-):
+async def evaluate_batch_transactions(file: UploadFile = File(...)):
     """
-    Evaluate multiple transactions from a CSV file against compliance rules.
+    Evaluate multiple transactions from a CSV file against all compliance rules in the database.
 
     Args:
         file: CSV file containing transactions (must match Transaction schema)
-        rules: Optional JSON string containing list of Rule objects
 
     Returns:
-        List of BatchEvaluationResponse objects for each transaction
+        Batch evaluation results for all transactions
 
     Example:
         POST /api/evaluation/evaluate-batch
         - file: transactions.csv (multipart/form-data)
-        - rules: JSON array of rules (optional, can be loaded from DB in future)
     """
     # Validate file type
     if not file.filename.endswith(".csv"):
@@ -157,25 +153,19 @@ async def evaluate_batch_transactions(
         with open(file_path, "wb") as f:
             f.write(await file.read())
 
-        # Parse rules if provided
-        parsed_rules = None
-        if rules:
-            import json
+        # Fetch all rules from database
+        db_service = DatabaseService()
+        rules_data = db_service.get_all_rules(limit=1000)
 
-            try:
-                rules_data = json.loads(rules)
-                parsed_rules = [Rule(**rule) for rule in rules_data]
-            except Exception as e:
-                raise HTTPException(
-                    status_code=400, detail=f"Invalid rules JSON: {str(e)}"
-                )
-
-        # Validate that rules are provided
-        if not parsed_rules:
+        if not rules_data:
             raise HTTPException(
                 status_code=400,
-                detail="Rules must be provided (either as 'rules' parameter or via rule_ids)",
+                detail="No rules found in database. Please add rules before evaluating transactions.",
             )
+
+        # Convert database rules to Rule objects
+        parsed_rules = [Rule(**rule) for rule in rules_data]
+        logger.info(f"Loaded {len(parsed_rules)} rules from database")
 
         # Load all transactions from CSV
         loader = TransactionLoaderService(file_path)
