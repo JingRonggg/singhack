@@ -54,11 +54,13 @@ const RulesTab = () => {
         title: "Rules Loaded",
         description: `Successfully loaded ${data.total} rules`,
       });
-    } catch (err: any) {
-      setError(err.message || "Failed to load rules");
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to load rules";
+      setError(errorMessage);
       toast({
         title: "Error",
-        description: err.message || "Failed to load rules",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -69,6 +71,7 @@ const RulesTab = () => {
   // Load rules on component mount
   useEffect(() => {
     fetchRules();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDelete = (ruleId: string) => {

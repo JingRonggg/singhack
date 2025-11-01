@@ -11,9 +11,21 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Card as ResultCard } from "@/components/ui/card";
 
+interface CrawlRule {
+  rule_text: string;
+}
+
+interface CrawlResult {
+  ruleset_id: string;
+  created_at: number;
+  rules: Record<string, CrawlRule>;
+}
+
+type CrawlResults = Record<string, CrawlResult>;
+
 const CrawlingTab = () => {
   const [urls, setUrls] = useState("");
-  const [crawlResults, setCrawlResults] = useState<any>(null);
+  const [crawlResults, setCrawlResults] = useState<CrawlResults | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -97,36 +109,28 @@ const CrawlingTab = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {Object.entries(crawlResults).map(
-                ([url, data]: [string, any]) => (
-                  <div key={url} className="border rounded-lg p-4 space-y-2">
-                    <div className="font-semibold">URL: {url}</div>
-                    <div className="text-sm text-muted-foreground">
-                      Ruleset ID: {data.ruleset_id}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Created:{" "}
-                      {new Date(data.created_at * 1000).toLocaleString()}
-                    </div>
-                    <div className="mt-2">
-                      <div className="font-medium mb-2">Extracted Rules:</div>
-                      <div className="space-y-2">
-                        {Object.entries(data.rules).map(
-                          ([id, rule]: [string, any]) => (
-                            <div
-                              key={id}
-                              className="text-sm bg-muted p-2 rounded"
-                            >
-                              <span className="font-medium">Rule {id}:</span>{" "}
-                              {rule}
-                            </div>
-                          )
-                        )}
-                      </div>
+              {Object.entries(crawlResults).map(([url, data]) => (
+                <div key={url} className="border rounded-lg p-4 space-y-2">
+                  <div className="font-semibold">URL: {url}</div>
+                  <div className="text-sm text-muted-foreground">
+                    Ruleset ID: {data.ruleset_id}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Created: {new Date(data.created_at * 1000).toLocaleString()}
+                  </div>
+                  <div className="mt-2">
+                    <div className="font-medium mb-2">Extracted Rules:</div>
+                    <div className="space-y-2">
+                      {Object.entries(data.rules).map(([id, rule]) => (
+                        <div key={id} className="text-sm bg-muted p-2 rounded">
+                          <span className="font-medium">Rule {id}:</span>{" "}
+                          {rule.rule_text}
+                        </div>
+                      ))}
                     </div>
                   </div>
-                )
-              )}
+                </div>
+              ))}
             </div>
           </CardContent>
         </ResultCard>

@@ -95,11 +95,13 @@ const DashboardTab = () => {
         title: "Dashboard Refreshed",
         description: "Successfully loaded latest data",
       });
-    } catch (err: any) {
-      setError(err.message || "Failed to load dashboard data");
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to load dashboard data";
+      setError(errorMessage);
       toast({
         title: "Error",
-        description: err.message || "Failed to load dashboard data",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -110,6 +112,7 @@ const DashboardTab = () => {
   // Load data on mount
   useEffect(() => {
     fetchDashboardData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getRiskBadgeVariant = (risk: string) => {
