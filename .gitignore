@@ -215,4 +215,6 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+*/docs
+
 backend/data/uploads
