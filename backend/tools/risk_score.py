@@ -196,7 +196,6 @@ class RiskScore:
         self.generate_behavior_rules(suspicious, normal)
 
     def format_risk(self, format_metadata: dict):
-
         spelling = format_metadata.get("spelling_mistakes", {})
         total_errors = spelling.get("spelling_errors_count", 0)
         characters_checked = spelling.get("characters_checked", 1)
