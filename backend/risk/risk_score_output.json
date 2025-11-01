@@ -1,0 +1,53 @@
+{
+    "triggered_rules": {
+        "booking_jurisdiction": [
+            "jurisdiction with high AML scrutiny (e.g., CH, SG, HK)"
+        ],
+        "amount": [
+            "amount > 500,000 in any currency"
+        ],
+        "product_type": [
+            "product_type = fx_conversion or securities_trade with high amount"
+        ],
+        "beneficiary_country": [
+            "beneficiary_country high-risk (IR, RU, CN) with cross-border flow"
+        ],
+        "swift_mt": [
+            "missing MT code for wire transfers"
+        ],
+        "ordering_institution_bic": [
+            "BIC not matching booking_jurisdiction"
+        ],
+        "beneficiary_institution_bic": [
+            "BIC not matching beneficiary_country"
+        ],
+        "swift_f71_charges": [
+            "charges field empty for large transfers"
+        ],
+        "fx_market_rate": [
+            "market rate missing or zero for FX transactions"
+        ],
+        "fx_counterparty": [
+            "counterparty unknown or blank"
+        ],
+        "kyc_last_completed": [
+            "last KYC date older than 2 years"
+        ],
+        "kyc_due_date": [
+            "kyc_due_date passed and not refreshed"
+        ],
+        "narrative": [
+            "narrative contains unrelated or filler text"
+        ],
+        "sanctions_screening": [
+            "screening result = potential or match with high-risk entities"
+        ],
+        "large_amount_cross_border": [
+            "amount > 500000 and originator_country != beneficiary_country"
+        ],
+        "stale_kyc": [
+            "kyc_due_date < today and kyc_last_completed < kyc_due_date"
+        ]
+    },
+    "risk_score": 64.94
+}

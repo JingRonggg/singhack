@@ -1,0 +1,106 @@
+{
+  "file_id": "e3579ea8-6d66-4e72-b5eb-5db1d2747154",
+  "document_metadata": {
+    "file_type": "pdf",
+    "page_count": 1,
+    "total_text_length": 639
+  },
+  "document_structure": {
+    "headers": [
+      "detect vehicle movement.",
+      "brushless motors.",
+      "Pixhawk."
+    ],
+    "paragraph_count": 0
+  },
+  "format_validation": {
+    "double_spacing_occurrences": 0,
+    "spelling_mistakes": {
+      "total_errors": 500,
+      "spelling_errors_count": 500,
+      "spelling_errors": [
+        {
+          "word": "survaillence",
+          "message": "Possible spelling mistake: 'survaillence'",
+          "replacements": [
+            "surveillance"
+          ]
+        },
+        {
+          "word": "pixhawk",
+          "message": "Possible spelling mistake: 'pixhawk'",
+          "replacements": []
+        },
+        {
+          "word": "algoritm",
+          "message": "Possible spelling mistake: 'algoritm'",
+          "replacements": [
+            "algorithm",
+            "algorism"
+          ]
+        },
+        {
+          "word": "dron",
+          "message": "Possible spelling mistake: 'dron'",
+          "replacements": [
+            "iron",
+            "deon",
+            "drop"
+          ]
+        },
+        {
+          "word": "brushless",
+          "message": "Possible spelling mistake: 'brushless'",
+          "replacements": [
+            "bruskness",
+            "brashness",
+            "brushiest"
+          ]
+        },
+        {
+          "word": "conclussion",
+          "message": "Possible spelling mistake: 'conclussion'",
+          "replacements": [
+            "conclusion",
+            "concussion"
+          ]
+        },
+        {
+          "word": "performence",
+          "message": "Possible spelling mistake: 'performence'",
+          "replacements": [
+            "performance"
+          ]
+        },
+        {
+          "word": "enogh",
+          "message": "Possible spelling mistake: 'enogh'",
+          "replacements": [
+            "enough",
+            "enoch"
+          ]
+        },
+        {
+          "word": "stabilisation",
+          "message": "Possible spelling mistake: 'stabilisation'",
+          "replacements": [
+            "stabilization"
+          ]
+        },
+        {
+          "word": "achive",
+          "message": "Possible spelling mistake: 'achive'",
+          "replacements": [
+            "achieve",
+            "active",
+            "chive"
+          ]
+        }
+      ],
+      "characters_checked": 639
+    },
+    "irregular_fonts": [],
+    "font_size_variants": 1,
+    "indentation_inconsistent": true
+  }
+}
