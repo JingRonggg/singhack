@@ -2,14 +2,84 @@ import requests
 from bs4 import BeautifulSoup
 from markdownify import markdownify as md
 from urllib.parse import urljoin, urlparse
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Dict
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
 from collections import defaultdict
+from uuid import uuid4
 
 from backend.util.config import load_config
 from backend.schemas.rules import RulesSchema, RulesExtractionSchema
+from backend.schemas.rule import Rule
 from datetime import datetime
+
+
+def infer_jurisdiction_from_domain(domain: str) -> list[str]:
+    """
+    Infer jurisdiction from domain name.
+    Returns a list of jurisdiction codes based on the domain.
+    """
+    domain_lower = domain.lower()
+
+    # Map common regulatory domains to jurisdictions
+    jurisdiction_map = {
+        "mas.gov.sg": ["SG"],  # Monetary Authority of Singapore
+        "hkma.gov.hk": ["HK"],  # Hong Kong Monetary Authority
+        "fca.org.uk": ["UK"],  # UK Financial Conduct Authority
+        "sec.gov": ["US"],  # US Securities and Exchange Commission
+        "finma.ch": ["CH"],  # Swiss Financial Market Supervisory Authority
+        "bafin.de": ["DE"],  # German Federal Financial Supervisory Authority
+    }
+
+    # Check if domain matches any known regulatory body
+    for domain_key, jurisdiction in jurisdiction_map.items():
+        if domain_key in domain_lower:
+            return jurisdiction
+
+    # Try to infer from country TLD
+    if ".sg" in domain_lower:
+        return ["SG"]
+    elif ".hk" in domain_lower:
+        return ["HK"]
+    elif ".uk" in domain_lower or ".gov.uk" in domain_lower:
+        return ["UK"]
+    elif ".gov" in domain_lower:
+        return ["US"]
+    elif ".ch" in domain_lower:
+        return ["CH"]
+
+    # Default to generic international
+    return ["INTL"]
+
+
+def convert_extracted_rules_to_rule_objects(
+    extracted_rules: Dict[str, str], source_url: str, jurisdiction: list[str]
+) -> Dict[str, Rule]:
+    """
+    Convert LLM-extracted rules (Dict[str, str]) to proper Rule objects (Dict[str, Rule]).
+
+    Args:
+        extracted_rules: Dictionary mapping rule numbers to rule text
+        source_url: The URL where rules were extracted from
+        jurisdiction: List of applicable jurisdictions
+
+    Returns:
+        Dictionary mapping rule numbers to Rule objects
+    """
+    rule_objects = {}
+
+    for rule_number, rule_text in extracted_rules.items():
+        # Create a proper Rule object
+        rule = Rule(
+            rule_id=uuid4(),
+            statement=rule_text,
+            jurisdiction=jurisdiction,
+            source_url=source_url,
+            suggested_action="enhanced due diligence",  # Default action, can be enhanced with LLM classification
+        )
+        rule_objects[rule_number] = rule
+
+    return rule_objects
 
 
 def get_web_content(website_urls: list[str], max_pages: int = 10) -> dict[str, str]:
@@ -148,9 +218,19 @@ Extract at least 5 key rules if available.
         try:
             response = structured_llm.invoke([system_message, human_message])
 
+            # Infer jurisdiction from domain
+            jurisdiction = infer_jurisdiction_from_domain(domain)
+
+            # Convert extracted rules (Dict[str, str]) to Rule objects (Dict[str, Rule])
+            rule_objects = convert_extracted_rules_to_rule_objects(
+                extracted_rules=response.rules,
+                source_url=domain,
+                jurisdiction=jurisdiction,
+            )
+
             rules_schema = RulesSchema(
                 created_at=int(datetime.now().timestamp()),
-                rules=response.rules,
+                rules=rule_objects,
                 source_urls=[domain],
             )
 
@@ -166,9 +246,18 @@ Extract at least 5 key rules if available.
         except Exception as e:
             print(f"Error parsing content from {domain}: {str(e)}")
             # Create error schema with proper metadata
+            # For errors, create a single error Rule object
+            jurisdiction = infer_jurisdiction_from_domain(domain)
+            error_rule = Rule(
+                rule_id=uuid4(),
+                statement=f"Failed to parse: {str(e)}",
+                jurisdiction=jurisdiction,
+                source_url=domain,
+                suggested_action="enhanced due diligence",
+            )
             error_schema = RulesSchema(
                 created_at=int(datetime.now().timestamp()),
-                rules={"error": f"Failed to parse: {str(e)}"},
+                rules={"error": error_rule},
                 source_urls=source_urls,
             )
             result[domain] = error_schema.model_dump()
