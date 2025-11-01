@@ -1,9 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from backend.controller import documents
+from backend.util.logging_config import setup_logging
+
+# Configure logging
+setup_logging()
 
 app = FastAPI(
-    title="Tiktok TechJam 2025",
-    description="Privacy Meets AI",
+    title="singhack",
+    description="singhack",
     version="1.0.0",
 )
 app.add_middleware(
@@ -13,6 +18,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(documents.router, prefix="/api/upload")
 
 
 @app.get("/")
