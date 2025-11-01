@@ -68,7 +68,9 @@ async def get_transaction_risk(transaction: Transaction):
     """
     try:
         risk_score = RiskScore()
-        result = risk_score.calculate_risk_score(transaction)
+        # Convert Pydantic model to dict for JSON serialization
+        transaction_dict = transaction.model_dump()
+        result = risk_score.calculate_risk_score(transaction_dict)
         return result
     except HTTPException:
         raise

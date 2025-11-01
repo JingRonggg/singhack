@@ -2,33 +2,51 @@
   "format": [
     {
       "factor": "spelling_error_rate",
-      "condition": "spelling_error_rate > 0.02",
-      "risk_weight": 0.8,
-      "description": "High spelling error rate — indicates poor document quality, potential carelessness, or AI-generated content. Frequent spelling mistakes may reduce document credibility, increase the risk of misinterpretation, and suggest automated or low-quality generation processes that may bypass human review."
+      "condition": "spelling_error_rate > 0.03",
+      "risk_weight": 0.85,
+      "description": "High spelling error rate (>3%) is a strong indicator of poor quality or AI-generated text. Such errors can severely undermine credibility and indicate lack of human oversight."
     },
     {
       "factor": "double_spacing_occurrences",
-      "condition": "double_spacing_occurrences > 3",
+      "condition": "double_spacing_occurrences > 4",
       "risk_weight": 0.1,
-      "description": "Excessive double spacing — may indicate formatting inconsistencies, careless editing, or attempts to manipulate document layout. While low risk, consistent double spacing across multiple documents could signal automated generation or poor document hygiene."
+      "description": "Frequent double spacing (>4 occurrences) typically reflects minor formatting sloppiness. It has minimal direct impact on authenticity but suggests careless editing."
     },
     {
       "factor": "irregular_fonts",
       "condition": "len(irregular_fonts) > 0",
-      "risk_weight": 0.5,
-      "description": "Irregular fonts detected — different fonts within the same document may indicate copy-pasting from multiple sources, tampering, or attempts to disguise modifications. This can affect readability and suggests inconsistent or suspicious editing practices."
+      "risk_weight": 0.6,
+      "description": "Irregular fonts indicate potential copy-paste or tampering across multiple sources. This poses a moderate-to-high credibility risk and may signal inconsistent or manipulated document origins."
     },
     {
       "factor": "font_size_variants",
       "condition": "font_size_variants > 3",
-      "risk_weight": 0.2,
-      "description": "Too many font size variants — inconsistent formatting across headings, paragraphs, or tables may reflect poor document structure, merging of multiple documents, or attempts to hide or emphasize certain content. This can reduce document readability and raise concerns about authenticity."
+      "risk_weight": 0.25,
+      "description": "Having more than three font sizes suggests inconsistent structure or merging of multiple documents. This contributes to perceived document unreliability and reduces readability."
     },
     {
       "factor": "indentation_inconsistent",
       "condition": "indentation_inconsistent == True",
-      "risk_weight": 0.2,
-      "description": "Inconsistent indentation — may indicate careless formatting, automatic document generation, or manual tampering. Misaligned text structures can make the document harder to read, suggest manipulation, and reduce overall trustworthiness."
+      "risk_weight": 0.25,
+      "description": "Inconsistent indentation often results from poor editing or manual tampering. While it affects readability, it also hints at possible document manipulation."
+    },
+    {
+      "factor": "spelling_and_format_mismatch",
+      "condition": "(spelling_error_rate > 0.03) and (len(irregular_fonts) > 0 or indentation_inconsistent == True)",
+      "risk_weight": 0.9,
+      "description": "When both high spelling errors and inconsistent formatting occur, the document shows signs of careless or automated generation. These combined issues compound credibility concerns and raise suspicion of low-quality or synthetic authorship."
+    },
+    {
+      "factor": "multiple_visual_inconsistencies",
+      "condition": "(len(irregular_fonts) > 0) and (font_size_variants > 3) and (indentation_inconsistent == True)",
+      "risk_weight": 0.7,
+      "description": "The simultaneous presence of irregular fonts, multiple font sizes, and inconsistent indentation suggests significant visual and structural instability. Such inconsistency implies possible content merging or tampering."
+    },
+    {
+      "factor": "low_hygiene_overall",
+      "condition": "(spelling_error_rate > 0.02) and (double_spacing_occurrences > 4) and (font_size_variants > 3)",
+      "risk_weight": 0.5,
+      "description": "When multiple minor hygiene issues appear together — spelling errors, spacing irregularities, and inconsistent sizing — they collectively indicate a systemic lack of attention to detail and poor document hygiene."
     }
   ]
 }

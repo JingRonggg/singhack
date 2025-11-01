@@ -141,7 +141,12 @@ class RiskScore:
         Ask LLM to check if a transaction triggers behaviour rules and calculate risk_score.
         Returns JSON with triggered rules and risk_score.
         """
-        with open(rules_file, "r") as f:
+        # Get the absolute path to the rules file
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        rules_file_path = os.path.join(
+            current_dir, "..", "risk", "detect_suspicious_v2.json"
+        )
+        with open(rules_file_path, "r") as f:
             rules_json = json.load(f)
 
         prompt = f"""
@@ -212,7 +217,10 @@ class RiskScore:
         }
 
         print(metrics)
-        with open("backend/risk/metadata_risk.json", "r") as f:
+        # Get the absolute path to the metadata_risk.json file
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        risk_json_path = os.path.join(current_dir, "..", "risk", "metadata_risk.json")
+        with open(risk_json_path, "r") as f:
             rules = json.load(f)
 
         format_rules = rules.get("format", [])
