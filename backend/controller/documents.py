@@ -111,7 +111,7 @@ async def upload_and_analyze_image(file: UploadFile = File(...)):
                         "high"
                         if analysis_result["is_ai_generated"]
                         and analysis_result["ai_confidence"] >= 70
-                        else "medium" 
+                        else "medium"
                         if analysis_result["is_ai_generated"]
                         else "low"
                     ),
