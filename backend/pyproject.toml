@@ -19,4 +19,6 @@ dependencies = [
     "unstructured[pdf]>=0.18.15",
     "pyspellchecker>=0.8.3",
     "pymupdf>=1.26.5",
+    "supabase>=2.11.0",
+    "python-dotenv>=1.0.0",
 ]

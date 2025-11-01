@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from typing import List, Optional
 from pydantic import BaseModel
+import logging
 
 from backend.schemas import (
     Transaction,
@@ -9,6 +10,9 @@ from backend.schemas import (
     BatchEvaluationResponse,
 )
 from backend.services.rule_evaluation_service import RuleEvaluationService
+from backend.services.database_service import DatabaseService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -89,6 +93,23 @@ async def evaluate_transaction(request: EvaluationRequest):
 
         # Evaluate transaction against all rules
         result = service.evaluate_transaction_against_rules(request.transaction, rules)
+
+        # Store evaluation results in database
+        if rules:  # Only store if rules are provided
+            try:
+                db_service = DatabaseService()
+                db_service.store_complete_evaluation(
+                    transaction=request.transaction,
+                    rules=rules,
+                    batch_response=result,
+                )
+                logger.info(
+                    f"Stored evaluation results for transaction {request.transaction.transaction_id}"
+                )
+            except Exception as db_error:
+                # Log database error but don't fail the request
+                logger.error(f"Failed to store evaluation in database: {db_error}")
+                # You could optionally add a flag to the response indicating storage failed
 
         return result
 

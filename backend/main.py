@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.controller import documents, web_scraper, evaluation
+from backend.controller import documents, web_scraper, evaluation, dashboard
 from backend.util.logging_config import setup_logging
 
 # Configure logging
@@ -21,6 +21,7 @@ app.add_middleware(
 app.include_router(documents.router, prefix="/api/upload")
 app.include_router(web_scraper.router, prefix="/api/scraper")
 app.include_router(evaluation.router, prefix="/api/evaluation")
+app.include_router(dashboard.router, prefix="/api/dashboard")
 
 
 @app.get("/")
