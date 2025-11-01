@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Upload } from "lucide-react";
 import { ImageAnalysis } from "../DocumentAnalysisSection";
+import { useState } from "react";
 
 const mockAnalysis: ImageAnalysis = {
   file_id: "74360218-898f-4712-8e70-3d62b0750567",
@@ -59,21 +60,54 @@ interface ImageUploadTabProps {
 }
 
 const ImageUploadTab = ({ results, setResults }: ImageUploadTabProps) => {
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const newResult = {
-        ...mockAnalysis,
-        filename: files[0].name,
-        file_id: Math.random().toString(36).substring(7),
-      };
-      setResults([...results, newResult]);
-      toast({
-        title: "Image Analyzed",
-        description: `${files[0].name} has been processed successfully`,
-      });
+      const file = files[0];
+      setIsLoading(true);
+
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch("http://localhost:8000/api/upload/image", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error("Image upload failed");
+        }
+
+        const data = await response.json();
+        console.log("Image Analysis Response:", data);
+
+        const newResult: ImageAnalysis = {
+          file_id: data.file_id,
+          filename: data.filename,
+          analysis: data.analysis,
+        };
+
+        setResults([...results, newResult]);
+        toast({
+          title: "Image Analyzed",
+          description: `${file.name} has been processed successfully`,
+        });
+      } catch (error) {
+        toast({
+          title: "Upload Failed",
+          description:
+            error instanceof Error
+              ? error.message
+              : "An error occurred during image upload",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -101,9 +135,12 @@ const ImageUploadTab = ({ results, setResults }: ImageUploadTabProps) => {
               accept="image/*"
               onChange={handleFileUpload}
               className="max-w-xs mx-auto"
+              disabled={isLoading}
             />
           </div>
-          <Button>Analyze Image</Button>
+          <Button disabled={isLoading}>
+            {isLoading ? "Analyzing..." : "Analyze Image"}
+          </Button>
         </CardContent>
       </Card>
 
