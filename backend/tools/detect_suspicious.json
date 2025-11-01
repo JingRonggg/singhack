@@ -1,0 +1,349 @@
+{
+    "transaction_id": {
+        "importance_weight": 0.1,
+        "behaviour_rules": [
+            "No direct rule \u2013 identifier itself is not predictive."
+        ]
+    },
+    "booking_jurisdiction": {
+        "importance_weight": 0.55,
+        "behaviour_rules": [
+            "Transactions booked in jurisdictions with known high\u2011risk regulators (e.g., CH\u2011FINMA, SG\u2011MAS) combined with large amounts (>\u202f500\u202fk) are more likely suspicious.",
+            "Bookings in jurisdictions that differ from both originator_country and beneficiary_country increase suspicion."
+        ]
+    },
+    "regulator": {
+        "importance_weight": 0.6,
+        "behaviour_rules": [
+            "Regulators that enforce strict AML (FINMA, MAS) appear more often in the suspicious set when other risk factors are present.",
+            "Regulator = HKMA/SFC together with cash\u2011withdrawal or cash\u2011deposit >\u202f100\u202fk raises a flag."
+        ]
+    },
+    "booking_datetime": {
+        "importance_weight": 0.3,
+        "behaviour_rules": [
+            "Transactions booked outside normal business hours (00:00\u201106:00) and with high amount (>\u202f250\u202fk) are suspicious.",
+            "Rapid succession of two bookings for the same customer within <\u202f2\u202fhours with large amounts triggers suspicion."
+        ]
+    },
+    "value_date": {
+        "importance_weight": 0.2,
+        "behaviour_rules": [
+            "Value dates that are more than 3 days after booking date for high\u2011value FX trades increase risk."
+        ]
+    },
+    "amount": {
+        "importance_weight": 0.95,
+        "behaviour_rules": [
+            "Amount >\u202f500\u202f000 (any currency) is a strong indicator of suspicion.",
+            "Amount >\u202f100\u202f000 for cash\u2011deposit or cash\u2011withdrawal channels is suspicious.",
+            "Amount >\u202f1\u202f000\u202f000 combined with FX conversion or securities trade raises a flag."
+        ]
+    },
+    "currency": {
+        "importance_weight": 0.65,
+        "behaviour_rules": [
+            "Use of less common currencies (JPY, CNY, CHF) together with large amounts (>\u202f200\u202fk) is suspicious.",
+            "FX conversions involving high\u2011risk quote currencies (e.g., SGD, HKD) increase risk."
+        ]
+    },
+    "channel": {
+        "importance_weight": 0.78,
+        "behaviour_rules": [
+            "FAST (SG) or FPS (HK) channels used for amounts >\u202f250\u202fk are flagged.",
+            "Cash channels (cash_deposit, cash_withdrawal) with daily total >\u202f50\u202fk or >\u202f5 transactions per day are suspicious.",
+            "Wire_transfer or SWIFT with missing MT codes (swift_mt empty) for large amounts raises a flag."
+        ]
+    },
+    "product_type": {
+        "importance_weight": 0.55,
+        "behaviour_rules": [
+            "product_type = fx_conversion combined with high amount (>\u202f300\u202fk) is suspicious.",
+            "product_type = securities_trade with large amount (>\u202f400\u202fk) and cross\u2011border parties is risky."
+        ]
+    },
+    "originator_name": {
+        "importance_weight": 0.2,
+        "behaviour_rules": [
+            "No direct rule \u2013 name alone is not predictive."
+        ]
+    },
+    "originator_account": {
+        "importance_weight": 0.4,
+        "behaviour_rules": [
+            "Accounts that start with GB and are used for multiple high\u2011value transactions within 24\u202fh increase suspicion."
+        ]
+    },
+    "originator_country": {
+        "importance_weight": 0.68,
+        "behaviour_rules": [
+            "Originator_country in high\u2011risk list (CN, RU, IR, ID, VN) combined with large amount (>\u202f200\u202fk) is suspicious.",
+            "Originator_country differs from booking_jurisdiction and beneficiary_country for high\u2011value FX trades."
+        ]
+    },
+    "beneficiary_name": {
+        "importance_weight": 0.2,
+        "behaviour_rules": [
+            "No direct rule \u2013 name alone is not predictive."
+        ]
+    },
+    "beneficiary_account": {
+        "importance_weight": 0.4,
+        "behaviour_rules": [
+            "Beneficiary accounts that appear in multiple high\u2011value transactions for different originators raise a flag."
+        ]
+    },
+    "beneficiary_country": {
+        "importance_weight": 0.68,
+        "behaviour_rules": [
+            "Beneficiary_country in high\u2011risk list (CN, RU, IR, ID, VN) together with large amount (>\u202f200\u202fk) is suspicious.",
+            "Beneficiary_country differs from originator_country for cash\u2011deposit/withdrawal >\u202f100\u202fk."
+        ]
+    },
+    "swift_mt": {
+        "importance_weight": 0.45,
+        "behaviour_rules": [
+            "Missing or empty swift_mt for wire_transfer or SWIFT messages with amount >\u202f250\u202fk is a risk indicator."
+        ]
+    },
+    "ordering_institution_bic": {
+        "importance_weight": 0.3,
+        "behaviour_rules": [
+            "BIC codes that do not match the booking jurisdiction for high\u2011value transactions increase suspicion."
+        ]
+    },
+    "beneficiary_institution_bic": {
+        "importance_weight": 0.3,
+        "behaviour_rules": [
+            "Beneficiary BIC missing or mismatched with beneficiary_country for large transfers."
+        ]
+    },
+    "swift_f50_present": {
+        "importance_weight": 0.4,
+        "behaviour_rules": [
+            "swift_f50_present = False for high\u2011value (>\u202f300\u202fk) SWIFT messages is a red flag."
+        ]
+    },
+    "swift_f59_present": {
+        "importance_weight": 0.4,
+        "behaviour_rules": [
+            "swift_f59_present = False together with swift_f50_present = False for large transfers raises suspicion."
+        ]
+    },
+    "swift_f70_purpose": {
+        "importance_weight": 0.35,
+        "behaviour_rules": [
+            "Empty or generic purpose text for high\u2011value FX or securities trades is suspicious."
+        ]
+    },
+    "swift_f71_charges": {
+        "importance_weight": 0.35,
+        "behaviour_rules": [
+            "Missing charge information for large SWIFT transfers increases risk."
+        ]
+    },
+    "travel_rule_complete": {
+        "importance_weight": 0.78,
+        "behaviour_rules": [
+            "travel_rule_complete = False for transactions >\u202f250\u202fk (especially crypto\u2011related or FX) is a strong indicator of suspicion."
+        ]
+    },
+    "fx_indicator": {
+        "importance_weight": 0.85,
+        "behaviour_rules": [
+            "fx_indicator = True combined with amount >\u202f200\u202fk is suspicious.",
+            "fx_indicator = True but fx_spread_bps unusually high (>\u202f50) raises a flag."
+        ]
+    },
+    "fx_base_ccy": {
+        "importance_weight": 0.55,
+        "behaviour_rules": [
+            "Base currency differs from originator_country currency for large FX conversions."
+        ]
+    },
+    "fx_quote_ccy": {
+        "importance_weight": 0.55,
+        "behaviour_rules": [
+            "Quote currency is a high\u2011risk currency (SGD, HKD, CNY) for large FX trades."
+        ]
+    },
+    "fx_applied_rate": {
+        "importance_weight": 0.45,
+        "behaviour_rules": [
+            "Applied rate deviates >\u202f5\u202f% from market_rate for high\u2011value FX trades."
+        ]
+    },
+    "fx_market_rate": {
+        "importance_weight": 0.45,
+        "behaviour_rules": [
+            "Same as fx_applied_rate rule \u2013 large deviation signals possible manipulation."
+        ]
+    },
+    "fx_spread_bps": {
+        "importance_weight": 0.6,
+        "behaviour_rules": [
+            "fx_spread_bps >\u202f30 for amounts >\u202f200\u202fk is suspicious.",
+            "fx_spread_bps = 0 for FX conversion may indicate missing data \u2013 flag when amount is high."
+        ]
+    },
+    "fx_counterparty": {
+        "importance_weight": 0.5,
+        "behaviour_rules": [
+            "Empty fx_counterparty for large FX conversions raises a flag."
+        ]
+    },
+    "customer_id": {
+        "importance_weight": 0.4,
+        "behaviour_rules": [
+            "Customer IDs that appear in both suspicious and normal sets with high\u2011value transactions should be monitored."
+        ]
+    },
+    "customer_type": {
+        "importance_weight": 0.55,
+        "behaviour_rules": [
+            "customer_type = individual combined with high\u2011value cash deposits (>\u202f100\u202fk) is riskier than corporate.",
+            "domiciliary_company with cross\u2011border high\u2011value trades is suspicious."
+        ]
+    },
+    "customer_risk_rating": {
+        "importance_weight": 0.92,
+        "behaviour_rules": [
+            "customer_risk_rating = High for any transaction >\u202f100\u202fk is a strong indicator.",
+            "Medium rating combined with other risk factors (high amount, FX, cross\u2011border) raises suspicion."
+        ]
+    },
+    "customer_is_pep": {
+        "importance_weight": 0.94,
+        "behaviour_rules": [
+            "customer_is_pep = True automatically raises the importance of the transaction.",
+            "PEP status together with high amount (>\u202f150\u202fk) or FX conversion is flagged."
+        ]
+    },
+    "kyc_last_completed": {
+        "importance_weight": 0.5,
+        "behaviour_rules": [
+            "KYC completed more than 2\u202fyears ago for high\u2011value transactions (>\u202f200\u202fk) increases risk."
+        ]
+    },
+    "kyc_due_date": {
+        "importance_weight": 0.45,
+        "behaviour_rules": [
+            "KYC due date in the past (overdue) for large transactions is suspicious."
+        ]
+    },
+    "edd_required": {
+        "importance_weight": 0.8,
+        "behaviour_rules": [
+            "edd_required = True but edd_performed = False for amounts >\u202f250\u202fk is a red flag."
+        ]
+    },
+    "edd_performed": {
+        "importance_weight": 0.78,
+        "behaviour_rules": [
+            "edd_performed = False when edd_required = True for high\u2011value or high\u2011risk country transactions."
+        ]
+    },
+    "sow_documented": {
+        "importance_weight": 0.4,
+        "behaviour_rules": [
+            "sow_documented = False for large cash\u2011deposit/withdrawal (>\u202f100\u202fk) raises suspicion."
+        ]
+    },
+    "purpose_code": {
+        "importance_weight": 0.5,
+        "behaviour_rules": [
+            "Purpose codes such as MED, INV, GDS, SAL with high amounts but vague narratives are riskier.",
+            "Missing purpose_code for large transfers is a flag."
+        ]
+    },
+    "narrative": {
+        "importance_weight": 0.45,
+        "behaviour_rules": [
+            "Narratives containing generic filler text (e.g., \"Expect walk simple focus fall.\") for high\u2011value transactions are suspicious.",
+            "Narratives with no clear business purpose for amounts >\u202f200\u202fk raise a flag."
+        ]
+    },
+    "is_advised": {
+        "importance_weight": 0.3,
+        "behaviour_rules": [
+            "is_advised = False for large FX or securities trades may indicate lack of oversight."
+        ]
+    },
+    "product_complex": {
+        "importance_weight": 0.35,
+        "behaviour_rules": [
+            "product_complex = True combined with high amount (>\u202f300\u202fk) is a risk factor."
+        ]
+    },
+    "client_risk_profile": {
+        "importance_weight": 0.6,
+        "behaviour_rules": [
+            "client_risk_profile = High for any transaction >\u202f100\u202fk is suspicious.",
+            "Balanced or Low profile with multiple high\u2011risk flags (country, amount, FX) raises alert."
+        ]
+    },
+    "suitability_assessed": {
+        "importance_weight": 0.4,
+        "behaviour_rules": [
+            "suitability_assessed = False for high\u2011value product_complex trades is a red flag."
+        ]
+    },
+    "suitability_result": {
+        "importance_weight": 0.35,
+        "behaviour_rules": [
+            "suitability_result = False (or mismatch) for large transactions increases risk."
+        ]
+    },
+    "product_has_va_exposure": {
+        "importance_weight": 0.3,
+        "behaviour_rules": [
+            "product_has_va_exposure = True together with high amount (>\u202f250\u202fk) is suspicious."
+        ]
+    },
+    "va_disclosure_provided": {
+        "importance_weight": 0.25,
+        "behaviour_rules": [
+            "Missing VA disclosure for high\u2011value VA\u2011exposed products raises a flag."
+        ]
+    },
+    "cash_id_verified": {
+        "importance_weight": 0.7,
+        "behaviour_rules": [
+            "cash_id_verified = False for cash_deposit or cash_withdrawal >\u202f50\u202fk is suspicious.",
+            "cash_id_verified = True but daily_cash_total_customer >\u202f100\u202fk still raises risk."
+        ]
+    },
+    "daily_cash_total_customer": {
+        "importance_weight": 0.85,
+        "behaviour_rules": [
+            "daily_cash_total_customer >\u202f100\u202fk (any currency) is a strong indicator of suspicious activity.",
+            "Daily total >\u202f50\u202fk combined with more than 3 cash transactions in a day raises a flag."
+        ]
+    },
+    "daily_cash_txn_count": {
+        "importance_weight": 0.78,
+        "behaviour_rules": [
+            "daily_cash_txn_count >\u202f4 for a single customer within 24\u202fh is suspicious.",
+            "Count >\u202f2 for cash withdrawals/deposits >\u202f75\u202fk each raises risk."
+        ]
+    },
+    "sanctions_screening": {
+        "importance_weight": 0.93,
+        "behaviour_rules": [
+            "sanctions_screening = potential (or match) for any transaction is a primary risk indicator.",
+            "sanctions_screening = match combined with high amount (>\u202f200\u202fk) is highly suspicious."
+        ]
+    },
+    "suspicion_determined_datetime": {
+        "importance_weight": 0.5,
+        "behaviour_rules": [
+            "Suspicion determined shortly after booking (within 6\u202fh) for large transactions may indicate automated alerts."
+        ]
+    },
+    "str_filed_datetime": {
+        "importance_weight": 0.4,
+        "behaviour_rules": [
+            "Long delay (>\u202f48\u202fh) between suspicion_determined_datetime and str_filed_datetime for high\u2011value transactions may indicate manual review lag."
+        ]
+    }
+}

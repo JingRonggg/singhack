@@ -1,0 +1,357 @@
+{
+    "transaction_id": {
+        "importance_weight": 0.05,
+        "behaviour_rules": []
+    },
+    "booking_jurisdiction": {
+        "importance_weight": 0.7,
+        "behaviour_rules": [
+            "jurisdiction in [CH, SG, HK] with high\u2011value cash transactions",
+            "jurisdiction = CH and regulator = FINMA with missing EDD"
+        ]
+    },
+    "regulator": {
+        "importance_weight": 0.55,
+        "behaviour_rules": [
+            "regulator = FINMA combined with amount > 500000",
+            "regulator = MAS and product_type = fx_conversion without travel_rule_complete"
+        ]
+    },
+    "booking_datetime": {
+        "importance_weight": 0.3,
+        "behaviour_rules": [
+            "transactions booked outside normal business hours (00:00\u201106:00) and amount > 200000"
+        ]
+    },
+    "value_date": {
+        "importance_weight": 0.2,
+        "behaviour_rules": []
+    },
+    "amount": {
+        "importance_weight": 0.95,
+        "behaviour_rules": [
+            "amount > 500000",
+            "amount > 200000 and customer_risk_rating = High",
+            "amount > 1000000 for cash_deposit or cash_withdrawal"
+        ]
+    },
+    "currency": {
+        "importance_weight": 0.45,
+        "behaviour_rules": [
+            "currency = JPY with amount > 300000",
+            "currency = CHF and product_type = fx_conversion"
+        ]
+    },
+    "channel": {
+        "importance_weight": 0.8,
+        "behaviour_rules": [
+            "channel = Cash and amount > 100000",
+            "channel = FAST (SG) with fx_conversion and missing travel_rule_complete"
+        ]
+    },
+    "product_type": {
+        "importance_weight": 0.85,
+        "behaviour_rules": [
+            "product_type in [cash_deposit, cash_withdrawal] with amount > 200000",
+            "product_type = fx_conversion and fx_spread_bps > 50",
+            "product_type = securities_trade with swift_f50_present = false"
+        ]
+    },
+    "originator_name": {
+        "importance_weight": 0.25,
+        "behaviour_rules": []
+    },
+    "originator_account": {
+        "importance_weight": 0.25,
+        "behaviour_rules": []
+    },
+    "originator_country": {
+        "importance_weight": 0.65,
+        "behaviour_rules": [
+            "originator_country in [CN, RU, ID] with high\u2011value cash transactions",
+            "originator_country != beneficiary_country for cash_deposit"
+        ]
+    },
+    "beneficiary_name": {
+        "importance_weight": 0.2,
+        "behaviour_rules": []
+    },
+    "beneficiary_account": {
+        "importance_weight": 0.2,
+        "behaviour_rules": []
+    },
+    "beneficiary_country": {
+        "importance_weight": 0.65,
+        "behaviour_rules": [
+            "beneficiary_country in high\u2011risk list (CN, RU, IR) with amount > 250000",
+            "beneficiary_country != originator_country for cash transactions"
+        ]
+    },
+    "swift_mt": {
+        "importance_weight": 0.6,
+        "behaviour_rules": [
+            "swift_mt = MT103 with swift_f50_present = false",
+            "swift_mt = MT202COV and swift_f71_charges = false"
+        ]
+    },
+    "ordering_institution_bic": {
+        "importance_weight": 0.4,
+        "behaviour_rules": []
+    },
+    "beneficiary_institution_bic": {
+        "importance_weight": 0.4,
+        "behaviour_rules": []
+    },
+    "swift_f50_present": {
+        "importance_weight": 0.7,
+        "behaviour_rules": [
+            "swift_f50_present = true while swift_f70_purpose is empty",
+            "swift_f50_present = true and product_type = cash_deposit"
+        ]
+    },
+    "swift_f59_present": {
+        "importance_weight": 0.7,
+        "behaviour_rules": [
+            "swift_f59_present = true and travel_rule_complete = false",
+            "swift_f59_present = true with amount > 300000"
+        ]
+    },
+    "swift_f70_purpose": {
+        "importance_weight": 0.55,
+        "behaviour_rules": [
+            "swift_f70_purpose empty for high\u2011value wire transfers"
+        ]
+    },
+    "swift_f71_charges": {
+        "importance_weight": 0.55,
+        "behaviour_rules": [
+            "swift_f71_charges empty while amount > 400000"
+        ]
+    },
+    "travel_rule_complete": {
+        "importance_weight": 0.9,
+        "behaviour_rules": [
+            "travel_rule_complete = false for fx_conversion above 200000",
+            "travel_rule_complete = false for cross\u2011border cash deposits"
+        ]
+    },
+    "fx_indicator": {
+        "importance_weight": 0.8,
+        "behaviour_rules": [
+            "fx_indicator = true and fx_spread_bps > 50",
+            "fx_indicator = true with missing edd_performed"
+        ]
+    },
+    "fx_base_ccy": {
+        "importance_weight": 0.3,
+        "behaviour_rules": []
+    },
+    "fx_quote_ccy": {
+        "importance_weight": 0.3,
+        "behaviour_rules": []
+    },
+    "fx_applied_rate": {
+        "importance_weight": 0.35,
+        "behaviour_rules": []
+    },
+    "fx_market_rate": {
+        "importance_weight": 0.35,
+        "behaviour_rules": []
+    },
+    "fx_spread_bps": {
+        "importance_weight": 0.75,
+        "behaviour_rules": [
+            "fx_spread_bps > 50 for fx_conversion",
+            "fx_spread_bps > 100 for cross\u2011border transactions"
+        ]
+    },
+    "fx_counterparty": {
+        "importance_weight": 0.4,
+        "behaviour_rules": []
+    },
+    "customer_id": {
+        "importance_weight": 0.2,
+        "behaviour_rules": []
+    },
+    "customer_type": {
+        "importance_weight": 0.55,
+        "behaviour_rules": [
+            "customer_type = domiciliary_company with amount > 300000",
+            "customer_type = individual and customer_risk_rating = High"
+        ]
+    },
+    "customer_risk_rating": {
+        "importance_weight": 0.95,
+        "behaviour_rules": [
+            "customer_risk_rating = High and amount > 150000",
+            "customer_risk_rating = Medium and edd_required = true"
+        ]
+    },
+    "customer_is_pep": {
+        "importance_weight": 0.85,
+        "behaviour_rules": [
+            "customer_is_pep = true and amount > 50000",
+            "customer_is_pep = true and travel_rule_complete = false"
+        ]
+    },
+    "kyc_last_completed": {
+        "importance_weight": 0.3,
+        "behaviour_rules": [
+            "kyc_last_completed older than 2 years for amount > 200000"
+        ]
+    },
+    "kyc_due_date": {
+        "importance_weight": 0.3,
+        "behaviour_rules": [
+            "kyc_due_date in past and amount > 100000"
+        ]
+    },
+    "edd_required": {
+        "importance_weight": 0.8,
+        "behaviour_rules": [
+            "edd_required = true but edd_performed = false",
+            "edd_required = true for cash withdrawals > 50000"
+        ]
+    },
+    "edd_performed": {
+        "importance_weight": 0.8,
+        "behaviour_rules": [
+            "edd_required = true and edd_performed = false"
+        ]
+    },
+    "sow_documented": {
+        "importance_weight": 0.4,
+        "behaviour_rules": [
+            "sow_documented = false for corporate customers with amount > 250000"
+        ]
+    },
+    "purpose_code": {
+        "importance_weight": 0.45,
+        "behaviour_rules": [
+            "purpose_code = MED with cash_deposit above 200000",
+            "purpose_code = INV for cross\u2011border wire transfers without travel_rule_complete"
+        ]
+    },
+    "narrative": {
+        "importance_weight": 0.2,
+        "behaviour_rules": []
+    },
+    "is_advised": {
+        "importance_weight": 0.25,
+        "behaviour_rules": []
+    },
+    "product_complex": {
+        "importance_weight": 0.25,
+        "behaviour_rules": []
+    },
+    "client_risk_profile": {
+        "importance_weight": 0.45,
+        "behaviour_rules": [
+            "client_risk_profile = High and amount > 100000"
+        ]
+    },
+    "suitability_assessed": {
+        "importance_weight": 0.3,
+        "behaviour_rules": []
+    },
+    "suitability_result": {
+        "importance_weight": 0.3,
+        "behaviour_rules": []
+    },
+    "product_has_va_exposure": {
+        "importance_weight": 0.2,
+        "behaviour_rules": []
+    },
+    "va_disclosure_provided": {
+        "importance_weight": 0.2,
+        "behaviour_rules": []
+    },
+    "cash_id_verified": {
+        "importance_weight": 0.55,
+        "behaviour_rules": [
+            "cash_id_verified = false for cash_deposit > 50000"
+        ]
+    },
+    "daily_cash_total_customer": {
+        "importance_weight": 0.85,
+        "behaviour_rules": [
+            "daily_cash_total_customer > 200000 for same customer",
+            "daily_cash_total_customer > 500000 and daily_cash_txn_count > 3"
+        ]
+    },
+    "daily_cash_txn_count": {
+        "importance_weight": 0.8,
+        "behaviour_rules": [
+            "daily_cash_txn_count > 3 with total amount > 150000",
+            "daily_cash_txn_count > 5 for any cash transaction"
+        ]
+    },
+    "sanctions_screening": {
+        "importance_weight": 0.9,
+        "behaviour_rules": [
+            "sanctions_screening = potential and amount > 100000",
+            "sanctions_screening = potential and customer_is_pep = true"
+        ]
+    },
+    "suspicion_determined_datetime": {
+        "importance_weight": 0.7,
+        "behaviour_rules": [
+            "suspicion_determined_datetime within 24h of booking_datetime for high amount"
+        ]
+    },
+    "str_filed_datetime": {
+        "importance_weight": 0.6,
+        "behaviour_rules": [
+            "str_filed_datetime delayed > 48h after suspicion_determined_datetime"
+        ]
+    },
+    "LARGE_AMOUNT_HIGH_RISK_CUSTOMER": {
+        "importance_weight": 0.96,
+        "behaviour_rules": [
+            "amount > 250000 AND customer_risk_rating = High",
+            "amount > 250000 AND customer_is_pep = true"
+        ]
+    },
+    "CROSS_BORDER_CASH_DEPOSIT": {
+        "importance_weight": 0.88,
+        "behaviour_rules": [
+            "product_type = cash_deposit AND originator_country != beneficiary_country",
+            "product_type = cash_deposit AND amount > 100000 AND originator_country in [CN,RU,ID]"
+        ]
+    },
+    "FX_CONVERSION_NO_TRAVEL_RULE": {
+        "importance_weight": 0.9,
+        "behaviour_rules": [
+            "product_type = fx_conversion AND travel_rule_complete = false",
+            "product_type = fx_conversion AND amount > 200000 AND travel_rule_complete = false"
+        ]
+    },
+    "MULTIPLE_HIGH_VALUE_TXNS_SAME_DAY": {
+        "importance_weight": 0.85,
+        "behaviour_rules": [
+            "daily_cash_txn_count > 3 AND daily_cash_total_customer > 200000",
+            "daily_cash_txn_count > 5 AND any transaction amount > 50000"
+        ]
+    },
+    "HIGH_FX_SPREAD": {
+        "importance_weight": 0.78,
+        "behaviour_rules": [
+            "fx_spread_bps > 50 AND product_type = fx_conversion",
+            "fx_spread_bps > 100 AND amount > 300000"
+        ]
+    },
+    "SUSPICIOUS_SWIFT_FIELDS": {
+        "importance_weight": 0.82,
+        "behaviour_rules": [
+            "swift_f50_present = true AND swift_f70_purpose is empty",
+            "swift_f59_present = true AND travel_rule_complete = false"
+        ]
+    },
+    "UNUSUAL_HOUR_HIGH_VALUE": {
+        "importance_weight": 0.74,
+        "behaviour_rules": [
+            "booking_datetime hour between 0 and 6 AND amount > 200000",
+            "booking_datetime hour between 0 and 6 AND product_type = fx_conversion"
+        ]
+    }
+}

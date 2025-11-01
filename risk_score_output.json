@@ -1,0 +1,53 @@
+{
+    "triggered_rules": {
+        "booking_jurisdiction": [
+            "Booking jurisdiction differs from both originator and beneficiary countries."
+        ],
+        "amount": [
+            "Amount > 500,000 (any currency) is a strong indicator of suspicion."
+        ],
+        "currency": [
+            "Currency HKD is a high\u2011risk quote currency for FX conversion with large amount."
+        ],
+        "product_type": [
+            "FX conversion with amount > 300,000 is suspicious."
+        ],
+        "originator_country": [
+            "Originator country differs from booking jurisdiction and beneficiary country for high\u2011value FX trade."
+        ],
+        "beneficiary_country": [
+            "Beneficiary country CN is high\u2011risk and amount >200,000."
+        ],
+        "ordering_institution_bic": [
+            "Missing ordering institution BIC mismatched with booking jurisdiction for high\u2011value transaction."
+        ],
+        "beneficiary_institution_bic": [
+            "Missing beneficiary institution BIC mismatched with beneficiary country for large transfer."
+        ],
+        "swift_f70_purpose": [
+            "Empty purpose text for high\u2011value FX trade."
+        ],
+        "fx_spread_bps": [
+            "FX spread BPS = 0 for high\u2011value FX conversion (possible missing data)."
+        ],
+        "fx_counterparty": [
+            "Empty fx_counterparty for large FX conversion."
+        ],
+        "kyc_due_date": [
+            "KYC due date overdue for large transaction."
+        ],
+        "purpose_code": [
+            "Purpose code SAL with high amount and vague narrative."
+        ],
+        "narrative": [
+            "Narrative contains generic filler text for high\u2011value transaction."
+        ],
+        "is_advised": [
+            "Transaction not advised for large FX trade."
+        ],
+        "sanctions_screening": [
+            "Sanctions screening result = potential (primary risk indicator)."
+        ]
+    },
+    "risk_score": 31.3
+}
