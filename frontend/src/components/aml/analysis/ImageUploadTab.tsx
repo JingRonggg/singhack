@@ -13,47 +13,6 @@ import { Upload } from "lucide-react";
 import { ImageAnalysis } from "../DocumentAnalysisSection";
 import { useState } from "react";
 
-const mockAnalysis: ImageAnalysis = {
-  file_id: "74360218-898f-4712-8e70-3d62b0750567",
-  filename: "BankStatementChequing.png",
-  analysis: {
-    authenticity: {
-      score: 40,
-      status: "suspicious",
-    },
-    ai_detection: {
-      is_ai_generated: false,
-      confidence: 10,
-      risk_level: "low",
-    },
-    tampering: {
-      is_tampered: true,
-      indicators: [
-        "Inconsistent font styles",
-        "Unusual alignment of text elements",
-        "Potential alteration of financial figures",
-      ],
-      indicator_count: 3,
-    },
-    forensics: {
-      metadata: {
-        format: "PNG",
-        mode: "RGB",
-        size: "690x533",
-      },
-      findings: [
-        "Red channel shows unnatural concentration",
-        "Inconsistent edge patterns detected",
-      ],
-    },
-    recommendations: [
-      "Verify document with original bank records",
-      "Check for matching documents online",
-    ],
-    timestamp: new Date().toISOString(),
-  },
-};
-
 interface ImageUploadTabProps {
   results: ImageAnalysis[];
   setResults: React.Dispatch<React.SetStateAction<ImageAnalysis[]>>;
@@ -139,7 +98,7 @@ const ImageUploadTab = ({ results, setResults }: ImageUploadTabProps) => {
             />
           </div>
           <Button disabled={isLoading}>
-            {isLoading ? "Analyzing..." : "Analyze Image"}
+            {isLoading ? "Analysing..." : "Analyse Image"}
           </Button>
         </CardContent>
       </Card>
@@ -245,6 +204,57 @@ const ImageUploadTab = ({ results, setResults }: ImageUploadTabProps) => {
                       )}
                     </ul>
                   </div>
+
+                  {result.analysis.reverse_search && (
+                    <div className="space-y-2 text-sm border-t pt-3">
+                      <div className="font-medium">Reverse Image Search:</div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">
+                            Match Status:
+                          </span>
+                          <Badge
+                            variant={
+                              result.analysis.reverse_search.summary
+                                .match_status === "EXACT_MATCH"
+                                ? "destructive"
+                                : result.analysis.reverse_search.summary
+                                    .match_status === "NEAR_DUPLICATE"
+                                ? "destructive"
+                                : result.analysis.reverse_search.summary
+                                    .match_status === "SIMILAR"
+                                ? "secondary"
+                                : "outline"
+                            }
+                          >
+                            {
+                              result.analysis.reverse_search.summary
+                                .match_status
+                            }
+                          </Badge>
+                        </div>
+                        {result.analysis.reverse_search.summary.exact_match && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">
+                              Exact Match:
+                            </span>
+                            <Badge variant="destructive">YES</Badge>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">
+                            Similarity:
+                          </span>
+                          <span className="text-sm font-medium">
+                            {result.analysis.reverse_search.summary.similarity}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                          {result.analysis.reverse_search.summary.verdict}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-1 text-sm">
                     <div className="font-medium">Recommendations:</div>

@@ -60,6 +60,26 @@ export interface ImageAnalysis {
       };
       findings: string[];
     };
+    reverse_search: {
+      results: {
+        uploaded_image_hash?: string;
+        reference_image_hash?: string;
+        exact_match?: string;
+        perceptual_similarity?: string;
+        match_status?: string;
+        verdict?: string;
+        reference_image_url?: string;
+        hamming_distance?: string;
+        error?: string;
+        note?: string;
+      };
+      summary: {
+        match_status: string;
+        verdict: string;
+        exact_match: boolean;
+        similarity: string;
+      };
+    };
     recommendations: string[];
     timestamp: string;
   };
