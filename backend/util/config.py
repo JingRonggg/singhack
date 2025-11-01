@@ -9,6 +9,3 @@ def load_config():
     Uses LRU cache to memoize the result.
     """
     return dotenv_values()
-
-
-print(load_config())
