@@ -53,7 +53,9 @@ class WebScraperRequest(BaseModel):
     summary="Scrape web content and extract rules",
     description="Scrapes provided URLs and extracts regulatory rules and guidelines using AI. Returns a dictionary with domains as keys and RulesSchema as values.",
 )
-async def scrape_web_content(request: WebScraperRequest) -> Dict[str, RulesSchema]:
+async def scrape_web_content(
+    request: Optional[WebScraperRequest] = None,
+) -> Dict[str, RulesSchema]:
     """
     Endpoint to scrape web content and extract rules.
 
