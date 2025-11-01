@@ -1,5 +1,18 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 
@@ -8,12 +21,14 @@ const mockEvaluations = [
   {
     transaction_id: "TXN-001",
     rule_id: "950fca9a-4aa9-4bda-a388-0af5f343f397",
-    rule_statement: "Financial institutions must obtain written authorisation from MAS",
+    rule_statement:
+      "Financial institutions must obtain written authorisation from MAS",
     conditions_met: false,
     confidence_score: 0.85,
+    risk_rating: "high",
     reasoning: "Transaction lacks proper MAS authorization documentation",
     suggested_action: "enhanced due diligence",
-    evaluated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+    evaluated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
   },
   {
     transaction_id: "TXN-002",
@@ -21,9 +36,10 @@ const mockEvaluations = [
     rule_statement: "Applicants must satisfy MAS admission criteria",
     conditions_met: false,
     confidence_score: 0.92,
+    risk_rating: "critical",
     reasoning: "High risk indicators detected in transaction pattern",
     suggested_action: "transaction blocking",
-    evaluated_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString()
+    evaluated_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
   },
   {
     transaction_id: "TXN-003",
@@ -31,10 +47,11 @@ const mockEvaluations = [
     rule_statement: "Payment must include proper reference codes",
     conditions_met: false,
     confidence_score: 0.78,
+    risk_rating: "medium",
     reasoning: "Missing UEN reference in payment details",
     suggested_action: "escalation",
-    evaluated_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
-  }
+    evaluated_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
+  },
 ];
 
 const DashboardTab = () => {
@@ -48,6 +65,21 @@ const DashboardTab = () => {
         return "default";
       case "enhanced due diligence":
         return "secondary";
+      default:
+        return "outline";
+    }
+  };
+
+  const getRiskBadgeVariant = (risk: string) => {
+    switch (risk.toLowerCase()) {
+      case "critical":
+        return "destructive";
+      case "high":
+        return "destructive";
+      case "medium":
+        return "secondary";
+      case "low":
+        return "outline";
       default:
         return "outline";
     }
@@ -67,6 +99,7 @@ const DashboardTab = () => {
             <TableRow>
               <TableHead>Transaction ID</TableHead>
               <TableHead>Rule Statement</TableHead>
+              <TableHead>Risk Rating</TableHead>
               <TableHead>Confidence</TableHead>
               <TableHead>Reasoning</TableHead>
               <TableHead>Suggested Action</TableHead>
@@ -76,16 +109,33 @@ const DashboardTab = () => {
           <TableBody>
             {evaluations.map((evaluation) => (
               <TableRow key={evaluation.transaction_id}>
-                <TableCell className="font-medium">{evaluation.transaction_id}</TableCell>
-                <TableCell className="max-w-xs truncate">{evaluation.rule_statement}</TableCell>
-                <TableCell>{(evaluation.confidence_score * 100).toFixed(0)}%</TableCell>
-                <TableCell className="max-w-xs truncate">{evaluation.reasoning}</TableCell>
+                <TableCell className="font-medium">
+                  {evaluation.transaction_id}
+                </TableCell>
+                <TableCell className="max-w-xs truncate">
+                  {evaluation.rule_statement}
+                </TableCell>
                 <TableCell>
-                  <Badge variant={getActionBadgeVariant(evaluation.suggested_action)}>
+                  <Badge variant={getRiskBadgeVariant(evaluation.risk_rating)}>
+                    {evaluation.risk_rating.toUpperCase()}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {(evaluation.confidence_score * 100).toFixed(0)}%
+                </TableCell>
+                <TableCell className="max-w-xs truncate">
+                  {evaluation.reasoning}
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={getActionBadgeVariant(evaluation.suggested_action)}
+                  >
                     {evaluation.suggested_action}
                   </Badge>
                 </TableCell>
-                <TableCell>{new Date(evaluation.evaluated_at).toLocaleString()}</TableCell>
+                <TableCell>
+                  {new Date(evaluation.evaluated_at).toLocaleString()}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

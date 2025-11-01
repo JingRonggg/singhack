@@ -52,9 +52,10 @@ const DocumentUploadTab = ({ results, setResults }: DocumentUploadTabProps) => {
         const data = await response.json();
         console.log("API Response:", data);
 
+        // Document response
         const newResult: DocumentAnalysis = {
           file_id: data.file_id,
-          filename: file.name,
+          filename: data.filename || file.name,
           document_metadata: data.document_metadata,
           document_structure: data.document_structure,
           format_validation: data.format_validation,
@@ -86,7 +87,7 @@ const DocumentUploadTab = ({ results, setResults }: DocumentUploadTabProps) => {
         <CardHeader>
           <CardTitle>Upload Document</CardTitle>
           <CardDescription>
-            Upload documents for format validation and analysis
+            Upload documents (PDF, TXT, XLSX) or images for analysis
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center min-h-[300px] space-y-4">
@@ -94,7 +95,7 @@ const DocumentUploadTab = ({ results, setResults }: DocumentUploadTabProps) => {
             <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <Input
               type="file"
-              accept=".pdf,.doc,.docx"
+              accept=".pdf,.doc,.docx,.txt,.xlsx,.xls,.jpg,.jpeg,.png,.bmp,.tiff,.webp"
               onChange={handleFileUpload}
               className="max-w-xs mx-auto"
               disabled={isLoading}

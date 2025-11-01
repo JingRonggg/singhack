@@ -13,6 +13,34 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.post("/")
 async def upload_and_validate(file: UploadFile = File(...)):
+    """
+    Upload and validate documents (PDF, TXT, XLSX) or images.
+
+    Supported file types:
+    - Documents: .pdf, .txt, .xlsx, .xls
+    - Images: .jpg, .jpeg, .png, .bmp, .tiff, .webp
+    """
+    # Validate file type
+    allowed_extensions = {
+        ".pdf",
+        ".txt",
+        ".xlsx",
+        ".xls",  # Documents
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".bmp",
+        ".tiff",
+        ".webp",  # Images
+    }
+    file_ext = os.path.splitext(file.filename)[1].lower()
+
+    if file_ext not in allowed_extensions:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type. Allowed types: {', '.join(sorted(allowed_extensions))}",
+        )
+
     # Save file
     file_id = str(uuid4())
     file_path = os.path.join(UPLOAD_DIR, f"{file_id}_{file.filename}")
@@ -20,22 +48,32 @@ async def upload_and_validate(file: UploadFile = File(...)):
         f.write(await file.read())
 
     try:
-        # Use Unstructured for extraction
+        # Use Unstructured for document/image text extraction (PDF, TXT, XLSX, Images with OCR)
         elements, full_text, metadata = extract_with_unstructured(file_path)
 
-        # Run Python-based format validation
+        # Run Python-based format validation on extracted text
         format_report = run_format_validation(full_text, file_path)
+
+        # Check if it's an image file for appropriate labeling
+        image_extensions = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp"}
+        file_type = "image" if file_ext in image_extensions else "document"
 
         # Construct and return JSON response
         response = {
             "file_id": file_id,
+            "filename": file.filename,
+            "file_type": file_type,
             "document_metadata": metadata,
             "document_structure": {
                 "headers": [
-                    e.text for e in elements if e.category in ("Title", "Header")
+                    e.text
+                    for e in elements
+                    if hasattr(e, "category") and e.category in ("Title", "Header")
                 ],
                 "paragraph_count": sum(
-                    1 for e in elements if e.category == "Paragraph"
+                    1
+                    for e in elements
+                    if hasattr(e, "category") and e.category == "Paragraph"
                 ),
             },
             "format_validation": format_report,
@@ -43,7 +81,13 @@ async def upload_and_validate(file: UploadFile = File(...)):
 
         return response
 
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
     except Exception as e:
+        # Clean up file if processing failed
+        if os.path.exists(file_path):
+            os.remove(file_path)
         raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
 
 
