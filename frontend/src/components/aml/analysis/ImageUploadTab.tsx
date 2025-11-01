@@ -1,0 +1,277 @@
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { Upload } from "lucide-react";
+import { ImageAnalysis } from "../DocumentAnalysisSection";
+import { useState } from "react";
+
+interface ImageUploadTabProps {
+  results: ImageAnalysis[];
+  setResults: React.Dispatch<React.SetStateAction<ImageAnalysis[]>>;
+}
+
+const ImageUploadTab = ({ results, setResults }: ImageUploadTabProps) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      setIsLoading(true);
+
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch("http://localhost:8000/api/upload/image", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error("Image upload failed");
+        }
+
+        const data = await response.json();
+        console.log("Image Analysis Response:", data);
+
+        const newResult: ImageAnalysis = {
+          file_id: data.file_id,
+          filename: data.filename,
+          analysis: data.analysis,
+        };
+
+        setResults([...results, newResult]);
+        toast({
+          title: "Image Analyzed",
+          description: `${file.name} has been processed successfully`,
+        });
+      } catch (error) {
+        toast({
+          title: "Upload Failed",
+          description:
+            error instanceof Error
+              ? error.message
+              : "An error occurred during image upload",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const getAuthenticityBadge = (score: number) => {
+    if (score < 50)
+      return { variant: "destructive" as const, label: "Suspicious" };
+    if (score < 75) return { variant: "secondary" as const, label: "Moderate" };
+    return { variant: "outline" as const, label: "Authentic" };
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Upload Image</CardTitle>
+          <CardDescription>
+            Upload images for authenticity and tampering detection
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center min-h-[300px] space-y-4">
+          <div className="border-2 border-dashed border-border rounded-lg p-8 w-full text-center">
+            <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="max-w-xs mx-auto"
+              disabled={isLoading}
+            />
+          </div>
+          <Button disabled={isLoading}>
+            {isLoading ? "Analysing..." : "Analyse Image"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Analysis Results</CardTitle>
+          <CardDescription>
+            Authenticity, tampering, and AI detection results
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {results.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              No images analyzed yet
+            </div>
+          ) : (
+            <div className="space-y-4 max-h-[500px] overflow-y-auto">
+              {results.map((result) => (
+                <div
+                  key={result.file_id}
+                  className="border rounded-lg p-4 space-y-3"
+                >
+                  <div className="font-semibold">{result.filename}</div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">
+                        Authenticity Score:
+                      </span>
+                      <Badge
+                        variant={
+                          getAuthenticityBadge(
+                            result.analysis.authenticity.score
+                          ).variant
+                        }
+                      >
+                        {result.analysis.authenticity.score}% -{" "}
+                        {
+                          getAuthenticityBadge(
+                            result.analysis.authenticity.score
+                          ).label
+                        }
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">AI Generated:</span>
+                      <Badge
+                        variant={
+                          result.analysis.ai_detection.is_ai_generated
+                            ? "destructive"
+                            : "outline"
+                        }
+                      >
+                        {result.analysis.ai_detection.is_ai_generated
+                          ? "Yes"
+                          : "No"}{" "}
+                        ({result.analysis.ai_detection.confidence}%)
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">
+                        Tampering Detected:
+                      </span>
+                      <Badge
+                        variant={
+                          result.analysis.tampering.is_tampered
+                            ? "destructive"
+                            : "outline"
+                        }
+                      >
+                        {result.analysis.tampering.is_tampered ? "Yes" : "No"}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {result.analysis.tampering.is_tampered && (
+                    <div className="space-y-1 text-sm">
+                      <div className="font-medium">Tampering Indicators:</div>
+                      <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                        {result.analysis.tampering.indicators.map(
+                          (indicator, idx) => (
+                            <li key={idx}>{indicator}</li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="space-y-1 text-sm">
+                    <div className="font-medium">Forensic Findings:</div>
+                    <div className="text-muted-foreground">
+                      Format: {result.analysis.forensics.metadata.format} |
+                      Size: {result.analysis.forensics.metadata.size}
+                    </div>
+                    <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                      {result.analysis.forensics.findings.map(
+                        (finding, idx) => (
+                          <li key={idx}>{finding}</li>
+                        )
+                      )}
+                    </ul>
+                  </div>
+
+                  {result.analysis.reverse_search && (
+                    <div className="space-y-2 text-sm border-t pt-3">
+                      <div className="font-medium">Reverse Image Search:</div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">
+                            Match Status:
+                          </span>
+                          <Badge
+                            variant={
+                              result.analysis.reverse_search.summary
+                                .match_status === "EXACT_MATCH"
+                                ? "destructive"
+                                : result.analysis.reverse_search.summary
+                                    .match_status === "NEAR_DUPLICATE"
+                                ? "destructive"
+                                : result.analysis.reverse_search.summary
+                                    .match_status === "SIMILAR"
+                                ? "secondary"
+                                : "outline"
+                            }
+                          >
+                            {
+                              result.analysis.reverse_search.summary
+                                .match_status
+                            }
+                          </Badge>
+                        </div>
+                        {result.analysis.reverse_search.summary.exact_match && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-muted-foreground">
+                              Exact Match:
+                            </span>
+                            <Badge variant="destructive">YES</Badge>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">
+                            Similarity:
+                          </span>
+                          <span className="text-sm font-medium">
+                            {result.analysis.reverse_search.summary.similarity}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
+                          {result.analysis.reverse_search.summary.verdict}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-1 text-sm">
+                    <div className="font-medium">Recommendations:</div>
+                    <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                      {result.analysis.recommendations.map((rec, idx) => (
+                        <li key={idx}>{rec}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default ImageUploadTab;

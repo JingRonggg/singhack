@@ -158,6 +158,7 @@ def analyze_pixel_anomalies(image_path: str) -> List[str]:
 def perform_reverse_image_search(image_path: str) -> Dict[str, str]:
     """
     Performs reverse image search to detect stolen or widely distributed images.
+    Compares uploaded image against a known reference image.
 
     Args:
         image_path (str): Path to the image file.
@@ -167,36 +168,99 @@ def perform_reverse_image_search(image_path: str) -> Dict[str, str]:
     """
     results = {}
 
+    # Hardcoded reference image URL
+    REFERENCE_IMAGE_URL = (
+        "https://kigfzu579b.ufs.sh/f/ax7xhMdcAWyp7XnrW2GO8ibrDWCe1l7PdtELuqXQIvcY4hUH"
+    )
+
     try:
-        # Generate image hash for comparison
+        # Generate hash for uploaded image
         with open(image_path, "rb") as f:
             image_data = f.read()
-            image_hash = hashlib.sha256(image_data).hexdigest()
+            uploaded_hash = hashlib.sha256(image_data).hexdigest()
 
-        results["image_hash"] = image_hash
+        results["uploaded_image_hash"] = uploaded_hash
         results["hash_algorithm"] = "SHA-256"
 
-        # Note: In production, integrate with actual reverse image search APIs
-        # such as Google Vision API, TinEye API, or similar services
-        results["note"] = (
-            "Reverse image search requires API integration (Google Vision, TinEye, etc.)"
-        )
-        results["recommendation"] = (
-            "Manually verify image uniqueness using Google Images or TinEye"
-        )
-
-        # Perceptual hash for near-duplicate detection
+        # Generate perceptual hash for uploaded image
         with Image.open(image_path) as image:
             small_image = image.convert("L").resize((8, 8), Image.Resampling.LANCZOS)
             pixels = np.array(small_image).flatten()
 
         avg = pixels.mean()
-        perceptual_hash = "".join(["1" if pixel > avg else "0" for pixel in pixels])
-
-        results["perceptual_hash"] = perceptual_hash
-        results["duplicate_detection"] = (
-            "Use perceptual hash for near-duplicate matching"
+        uploaded_perceptual_hash = "".join(
+            ["1" if pixel > avg else "0" for pixel in pixels]
         )
+        results["uploaded_perceptual_hash"] = uploaded_perceptual_hash
+
+        # Download and compare with reference image
+        try:
+            import requests
+            from io import BytesIO
+
+            response = requests.get(REFERENCE_IMAGE_URL, timeout=10)
+            if response.status_code == 200:
+                reference_data = response.content
+                reference_hash = hashlib.sha256(reference_data).hexdigest()
+
+                # Generate perceptual hash for reference image
+                reference_image = Image.open(BytesIO(reference_data))
+                ref_small = reference_image.convert("L").resize(
+                    (8, 8), Image.Resampling.LANCZOS
+                )
+                ref_pixels = np.array(ref_small).flatten()
+                ref_avg = ref_pixels.mean()
+                reference_perceptual_hash = "".join(
+                    ["1" if pixel > ref_avg else "0" for pixel in ref_pixels]
+                )
+
+                # Compare hashes
+                exact_match = uploaded_hash == reference_hash
+
+                # Calculate perceptual hash similarity (Hamming distance)
+                hamming_distance = sum(
+                    c1 != c2
+                    for c1, c2 in zip(
+                        uploaded_perceptual_hash, reference_perceptual_hash
+                    )
+                )
+                similarity_score = (
+                    (64 - hamming_distance) / 64
+                ) * 100  # Convert to percentage
+
+                results["reference_image_url"] = REFERENCE_IMAGE_URL
+                results["reference_image_hash"] = reference_hash
+                results["reference_perceptual_hash"] = reference_perceptual_hash
+                results["exact_match"] = str(exact_match)
+                results["perceptual_similarity"] = f"{similarity_score:.2f}%"
+                results["hamming_distance"] = str(hamming_distance)
+
+                if exact_match:
+                    results["match_status"] = "EXACT_MATCH"
+                    results["verdict"] = "Image is an exact copy of the reference image"
+                elif similarity_score >= 90:
+                    results["match_status"] = "NEAR_DUPLICATE"
+                    results["verdict"] = (
+                        "Image is very similar to the reference image (possible minor edits)"
+                    )
+                elif similarity_score >= 70:
+                    results["match_status"] = "SIMILAR"
+                    results["verdict"] = (
+                        "Image shows significant similarity to the reference image"
+                    )
+                else:
+                    results["match_status"] = "NO_MATCH"
+                    results["verdict"] = "Image does not match the reference image"
+
+            else:
+                results["error"] = (
+                    f"Failed to fetch reference image: HTTP {response.status_code}"
+                )
+                results["note"] = "Could not perform reverse image search comparison"
+
+        except requests.exceptions.RequestException as req_err:
+            results["error"] = f"Network error fetching reference image: {str(req_err)}"
+            results["note"] = "Reverse image search comparison unavailable"
 
     except Exception as e:
         results["error"] = f"Reverse search failed: {str(e)}"
@@ -346,9 +410,9 @@ def analyze_image_with_llm(
     if not api_key:
         raise ValueError("GROQ_API_KEY environment variable is required")
 
-    # Use Llama 3.2 Vision model which has better vision capabilities
+    # Use Llama 4 Scout Vision model for image analysis
     llm = ChatGroq(
-        model="llama-3.2-90b-vision-preview",
+        model="meta-llama/llama-4-scout-17b-16e-instruct",  # Latest Llama 4 vision model
         api_key=api_key,
         temperature=0.1,  # Lower temperature for more consistent detection
     )
@@ -359,9 +423,6 @@ def analyze_image_with_llm(
         with Image.open(image_path) as image:
             image_format = image.format
             image_size = image.size
-
-        # Encode image for vision model
-        base64_image = encode_image_to_base64(image_path)
 
     except Exception as e:
         raise ValueError(f"Failed to process image: {str(e)}")
@@ -455,11 +516,8 @@ You MUST respond with ONLY a valid JSON object that matches this exact schema:
 CRITICAL: Use actual numbers (not quoted strings) for scores and actual booleans (true/false, not "true"/"false") in the JSON."""
     )
 
-    human_message = HumanMessage(
-        content=[
-            {
-                "type": "text",
-                "text": f"""Perform a comprehensive forensic analysis of this image:
+    # Create the text prompt
+    text_prompt = f"""Perform a comprehensive forensic analysis of this image:
 
 **Image Information:**
 - Format: {image_format}
@@ -552,14 +610,12 @@ CRITICAL: Use actual numbers (not quoted strings) for scores and actual booleans
 - authenticity_score: Must be a NUMBER (0-100), not a string
 - ai_confidence: Must be a NUMBER (0-100), not a string
 - is_ai_generated: Must be a BOOLEAN (true/false), not a string
-- is_tampered: Must be a BOOLEAN (true/false), not a string""",
-            },
-            {
-                "type": "image_url",
-                "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
-            },
-        ]
-    )
+- is_tampered: Must be a BOOLEAN (true/false), not a string
+
+Based on the technical analysis data provided above, provide your expert assessment as a JSON object."""
+
+    # Create HumanMessage with just text content (no image since model doesn't support vision)
+    human_message = HumanMessage(content=text_prompt)
 
     try:
         response = llm.invoke([system_message, human_message])
