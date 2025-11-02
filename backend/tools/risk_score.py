@@ -205,7 +205,7 @@ class RiskScore:
                 batch = transactions[i : i + batch_size]
 
                 print(
-                    f"Processing batch {i//batch_size + 1}: {len(batch)} transactions"
+                    f"Processing batch {i // batch_size + 1}: {len(batch)} transactions"
                 )
 
                 with ThreadPoolExecutor(max_workers=8) as executor:
