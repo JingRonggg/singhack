@@ -32,6 +32,10 @@ export interface DocumentAnalysis {
     irregular_fonts?: string[];
     note?: string;
   };
+  risk_analysis?: {
+    triggered_rules: Record<string, string[]>;
+    risk_score: number;
+  };
 }
 
 export interface ImageAnalysis {

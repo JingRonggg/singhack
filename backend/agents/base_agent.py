@@ -23,7 +23,7 @@ class BaseAgent:
     ):
         # Load API key from config
         cfg = load_config()
-        api_key = cfg.get("GROK_API_KEY")
+        api_key = cfg.get("GROQ_API_KEY")
         if not api_key:
             raise ValueError("GROQ_API_KEY is required in config but not present")
 
