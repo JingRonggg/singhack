@@ -33,6 +33,17 @@ interface DashboardStats {
   total_rules: number;
 }
 
+interface RuleEvaluation {
+  transaction_id: string;
+  rule_id: string;
+  rule_statement: string;
+  conditions_met: boolean;
+  confidence_score: number;
+  reasoning: string;
+  suggested_action: string;
+  evaluated_at: string;
+}
+
 interface Transaction {
   transaction_id: string;
   booking_datetime: string;
@@ -42,14 +53,50 @@ interface Transaction {
   beneficiary_name: string;
   originator_country?: string;
   beneficiary_country?: string;
-  batch_evaluations?: Array<{
-    total_rules_evaluated: number;
-    violated_rules_count: number;
-    passed_rules_count: number;
-    overall_risk_level: string;
-    requires_action: boolean;
-  }>;
+  rule_evaluations?: RuleEvaluation[];
 }
+
+// Helper function to calculate evaluation summary from rule_evaluations
+const getEvaluationSummary = (rule_evaluations?: RuleEvaluation[]) => {
+  if (!rule_evaluations || rule_evaluations.length === 0) {
+    return {
+      total_rules_evaluated: 0,
+      violated_rules_count: 0,
+      passed_rules_count: 0,
+      overall_risk_level: "low",
+      requires_action: false,
+    };
+  }
+
+  const violated = rule_evaluations.filter((r) => r.conditions_met);
+  const passed = rule_evaluations.filter((r) => !r.conditions_met);
+
+  // Determine risk level based on violations
+  const violatedCount = violated.length;
+  const hasBlocking = violated.some((r) =>
+    r.suggested_action.toLowerCase().includes("blocking")
+  );
+  const hasEscalation = violated.some((r) =>
+    r.suggested_action.toLowerCase().includes("escalation")
+  );
+
+  let overall_risk_level = "low";
+  if (hasBlocking || hasEscalation || violatedCount > 2) {
+    overall_risk_level = "high";
+  } else if (violatedCount > 1) {
+    overall_risk_level = "medium";
+  } else if (violatedCount > 0) {
+    overall_risk_level = "low";
+  }
+
+  return {
+    total_rules_evaluated: rule_evaluations.length,
+    violated_rules_count: violated.length,
+    passed_rules_count: passed.length,
+    overall_risk_level,
+    requires_action: violated.length > 0,
+  };
+};
 
 const DashboardTab = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -278,7 +325,7 @@ const DashboardTab = () => {
               </TableHeader>
               <TableBody>
                 {highRiskTransactions.map((txn) => {
-                  const evaluation = txn.batch_evaluations?.[0];
+                  const evaluation = getEvaluationSummary(txn.rule_evaluations);
                   return (
                     <TableRow key={txn.transaction_id}>
                       <TableCell className="font-mono text-xs">
@@ -312,25 +359,24 @@ const DashboardTab = () => {
                       <TableCell>
                         <Badge
                           variant={getRiskBadgeVariant(
-                            evaluation?.overall_risk_level || ""
+                            evaluation.overall_risk_level
                           )}
                         >
-                          {evaluation?.overall_risk_level?.toUpperCase() ||
-                            "N/A"}
+                          {evaluation.overall_risk_level.toUpperCase()}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span className="text-red-600 font-semibold">
-                            {evaluation?.violated_rules_count || 0}
+                            {evaluation.violated_rules_count}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            / {evaluation?.total_rules_evaluated || 0}
+                            / {evaluation.total_rules_evaluated}
                           </span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        {evaluation?.requires_action ? (
+                        {evaluation.requires_action ? (
                           <Badge variant="destructive">Yes</Badge>
                         ) : (
                           <Badge variant="outline">No</Badge>
@@ -378,7 +424,7 @@ const DashboardTab = () => {
               </TableHeader>
               <TableBody>
                 {transactions.map((txn) => {
-                  const evaluation = txn.batch_evaluations?.[0];
+                  const evaluation = getEvaluationSummary(txn.rule_evaluations);
                   return (
                     <TableRow key={txn.transaction_id}>
                       <TableCell className="font-mono text-xs">
@@ -405,31 +451,30 @@ const DashboardTab = () => {
                       <TableCell>
                         <Badge
                           variant={getRiskBadgeVariant(
-                            evaluation?.overall_risk_level || ""
+                            evaluation.overall_risk_level
                           )}
                         >
-                          {evaluation?.overall_risk_level?.toUpperCase() ||
-                            "N/A"}
+                          {evaluation.overall_risk_level.toUpperCase()}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">
-                          {evaluation?.total_rules_evaluated || 0}
+                          {evaluation.total_rules_evaluated}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Badge
                             variant={
-                              evaluation?.violated_rules_count
+                              evaluation.violated_rules_count
                                 ? "destructive"
                                 : "secondary"
                             }
                           >
-                            {evaluation?.violated_rules_count || 0}
+                            {evaluation.violated_rules_count}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
-                            ({evaluation?.passed_rules_count || 0} passed)
+                            ({evaluation.passed_rules_count} passed)
                           </span>
                         </div>
                       </TableCell>
