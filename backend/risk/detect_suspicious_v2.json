@@ -1,0 +1,380 @@
+{
+    "transaction_id": {
+        "importance_weight": 0.1,
+        "behaviour_rules": [
+            "duplicate transaction_id across records"
+        ]
+    },
+    "booking_jurisdiction": {
+        "importance_weight": 0.4,
+        "behaviour_rules": [
+            "jurisdiction with high AML scrutiny (e.g., CH, SG, HK)"
+        ]
+    },
+    "regulator": {
+        "importance_weight": 0.3,
+        "behaviour_rules": [
+            "regulator mismatch with jurisdiction"
+        ]
+    },
+    "booking_datetime": {
+        "importance_weight": 0.5,
+        "behaviour_rules": [
+            "transactions occurring outside business hours",
+            "sudden spikes in volume within short time"
+        ]
+    },
+    "value_date": {
+        "importance_weight": 0.3,
+        "behaviour_rules": [
+            "value_date far from booking_datetime (>2 days)"
+        ]
+    },
+    "amount": {
+        "importance_weight": 0.95,
+        "behaviour_rules": [
+            "amount > 500,000 in any currency",
+            "amount > 1,000,000 for high-risk product types"
+        ]
+    },
+    "currency": {
+        "importance_weight": 0.6,
+        "behaviour_rules": [
+            "use of exotic currencies (CNY, JPY) with large amounts",
+            "currency mismatch with fx_indicator"
+        ]
+    },
+    "channel": {
+        "importance_weight": 0.7,
+        "behaviour_rules": [
+            "use of FAST (SG) or RTGS for cash deposits",
+            "channel not typical for product_type"
+        ]
+    },
+    "product_type": {
+        "importance_weight": 0.85,
+        "behaviour_rules": [
+            "product_type = fx_conversion or securities_trade with high amount",
+            "cash_deposit via wire_transfer"
+        ]
+    },
+    "originator_name": {
+        "importance_weight": 0.2,
+        "behaviour_rules": [
+            "repeated originator_name across many high-value transactions"
+        ]
+    },
+    "originator_account": {
+        "importance_weight": 0.4,
+        "behaviour_rules": [
+            "originator_account appearing in multiple beneficiary roles"
+        ]
+    },
+    "originator_country": {
+        "importance_weight": 0.75,
+        "behaviour_rules": [
+            "originator_country high-risk (IR, RU, CN) with large transfers"
+        ]
+    },
+    "beneficiary_name": {
+        "importance_weight": 0.2,
+        "behaviour_rules": [
+            "beneficiary_name reused across unrelated customers"
+        ]
+    },
+    "beneficiary_account": {
+        "importance_weight": 0.4,
+        "behaviour_rules": [
+            "beneficiary_account linked to many originators"
+        ]
+    },
+    "beneficiary_country": {
+        "importance_weight": 0.75,
+        "behaviour_rules": [
+            "beneficiary_country high-risk (IR, RU, CN) with cross-border flow"
+        ]
+    },
+    "swift_mt": {
+        "importance_weight": 0.5,
+        "behaviour_rules": [
+            "missing MT code for wire transfers"
+        ]
+    },
+    "ordering_institution_bic": {
+        "importance_weight": 0.3,
+        "behaviour_rules": [
+            "BIC not matching booking_jurisdiction"
+        ]
+    },
+    "beneficiary_institution_bic": {
+        "importance_weight": 0.3,
+        "behaviour_rules": [
+            "BIC not matching beneficiary_country"
+        ]
+    },
+    "swift_f50_present": {
+        "importance_weight": 0.4,
+        "behaviour_rules": [
+            "false for high-value SWIFT messages"
+        ]
+    },
+    "swift_f59_present": {
+        "importance_weight": 0.4,
+        "behaviour_rules": [
+            "false for high-value SWIFT messages"
+        ]
+    },
+    "swift_f70_purpose": {
+        "importance_weight": 0.5,
+        "behaviour_rules": [
+            "purpose field contains generic or unrelated text"
+        ]
+    },
+    "swift_f71_charges": {
+        "importance_weight": 0.4,
+        "behaviour_rules": [
+            "charges field empty for large transfers"
+        ]
+    },
+    "travel_rule_complete": {
+        "importance_weight": 0.9,
+        "behaviour_rules": [
+            "travel_rule_complete = false for transfers > 1,000,000"
+        ]
+    },
+    "fx_indicator": {
+        "importance_weight": 0.6,
+        "behaviour_rules": [
+            "fx_indicator true but fx fields missing or inconsistent"
+        ]
+    },
+    "fx_base_ccy": {
+        "importance_weight": 0.5,
+        "behaviour_rules": [
+            "base currency does not match transaction currency"
+        ]
+    },
+    "fx_quote_ccy": {
+        "importance_weight": 0.5,
+        "behaviour_rules": [
+            "quote currency unusual for the pair"
+        ]
+    },
+    "fx_applied_rate": {
+        "importance_weight": 0.6,
+        "behaviour_rules": [
+            "applied rate deviates >5% from market_rate"
+        ]
+    },
+    "fx_market_rate": {
+        "importance_weight": 0.6,
+        "behaviour_rules": [
+            "market rate missing or zero for FX transactions"
+        ]
+    },
+    "fx_spread_bps": {
+        "importance_weight": 0.8,
+        "behaviour_rules": [
+            "fx_spread_bps > 50",
+            "fx_spread_bps unusually high for low-value FX"
+        ]
+    },
+    "fx_counterparty": {
+        "importance_weight": 0.4,
+        "behaviour_rules": [
+            "counterparty unknown or blank"
+        ]
+    },
+    "customer_id": {
+        "importance_weight": 0.5,
+        "behaviour_rules": [
+            "customer_id linked to many high-value transactions"
+        ]
+    },
+    "customer_type": {
+        "importance_weight": 0.5,
+        "behaviour_rules": [
+            "domiciliary_company flagged more often than individual"
+        ]
+    },
+    "customer_risk_rating": {
+        "importance_weight": 0.9,
+        "behaviour_rules": [
+            "rating = High or Medium combined with large amount"
+        ]
+    },
+    "customer_is_pep": {
+        "importance_weight": 0.95,
+        "behaviour_rules": [
+            "PEP flag true with any high-value transaction"
+        ]
+    },
+    "kyc_last_completed": {
+        "importance_weight": 0.8,
+        "behaviour_rules": [
+            "last KYC date older than 2 years"
+        ]
+    },
+    "kyc_due_date": {
+        "importance_weight": 0.85,
+        "behaviour_rules": [
+            "kyc_due_date passed and not refreshed"
+        ]
+    },
+    "edd_required": {
+        "importance_weight": 0.7,
+        "behaviour_rules": [
+            "edd_required = true but edd_performed = false"
+        ]
+    },
+    "edd_performed": {
+        "importance_weight": 0.7,
+        "behaviour_rules": [
+            "edd_performed = false when edd_required = true"
+        ]
+    },
+    "sow_documented": {
+        "importance_weight": 0.4,
+        "behaviour_rules": [
+            "source of wealth not documented for large transfers"
+        ]
+    },
+    "purpose_code": {
+        "importance_weight": 0.5,
+        "behaviour_rules": [
+            "purpose_code generic (e.g., MED, INV) for high amount"
+        ]
+    },
+    "narrative": {
+        "importance_weight": 0.5,
+        "behaviour_rules": [
+            "narrative contains unrelated or filler text"
+        ]
+    },
+    "is_advised": {
+        "importance_weight": 0.3,
+        "behaviour_rules": [
+            "is_advised = false for complex products"
+        ]
+    },
+    "product_complex": {
+        "importance_weight": 0.6,
+        "behaviour_rules": [
+            "product_complex = true with cash deposits"
+        ]
+    },
+    "client_risk_profile": {
+        "importance_weight": 0.8,
+        "behaviour_rules": [
+            "profile = High combined with high amount"
+        ]
+    },
+    "suitability_assessed": {
+        "importance_weight": 0.4,
+        "behaviour_rules": [
+            "suitability_assessed = false for high-risk products"
+        ]
+    },
+    "suitability_result": {
+        "importance_weight": 0.4,
+        "behaviour_rules": [
+            "result = mismatch with product risk"
+        ]
+    },
+    "product_has_va_exposure": {
+        "importance_weight": 0.3,
+        "behaviour_rules": [
+            "true for non-VA products"
+        ]
+    },
+    "va_disclosure_provided": {
+        "importance_weight": 0.3,
+        "behaviour_rules": [
+            "false when product_has_va_exposure = true"
+        ]
+    },
+    "cash_id_verified": {
+        "importance_weight": 0.7,
+        "behaviour_rules": [
+            "false for cash deposits above 10,000"
+        ]
+    },
+    "daily_cash_total_customer": {
+        "importance_weight": 0.85,
+        "behaviour_rules": [
+            "daily total > 200,000 for a single customer"
+        ]
+    },
+    "daily_cash_txn_count": {
+        "importance_weight": 0.85,
+        "behaviour_rules": [
+            "more than 3 cash transactions in a single day"
+        ]
+    },
+    "sanctions_screening": {
+        "importance_weight": 0.95,
+        "behaviour_rules": [
+            "screening result = potential or match with high-risk entities"
+        ]
+    },
+    "suspicion_determined_datetime": {
+        "importance_weight": 0.6,
+        "behaviour_rules": [
+            "suspicion timestamp close to booking time (<1 hour)"
+        ]
+    },
+    "str_filed_datetime": {
+        "importance_weight": 0.5,
+        "behaviour_rules": [
+            "SAR filed date delayed > 48 hours after suspicion"
+        ]
+    },
+    "large_amount_cross_border": {
+        "importance_weight": 0.96,
+        "behaviour_rules": [
+            "amount > 500000 and originator_country != beneficiary_country"
+        ]
+    },
+    "stale_kyc": {
+        "importance_weight": 0.88,
+        "behaviour_rules": [
+            "kyc_due_date < today and kyc_last_completed < kyc_due_date"
+        ]
+    },
+    "missing_edd": {
+        "importance_weight": 0.82,
+        "behaviour_rules": [
+            "edd_required = true and edd_performed = false"
+        ]
+    },
+    "high_fx_spread": {
+        "importance_weight": 0.84,
+        "behaviour_rules": [
+            "fx_spread_bps > 50"
+        ]
+    },
+    "multiple_transactions_same_day": {
+        "importance_weight": 0.8,
+        "behaviour_rules": [
+            "daily_cash_txn_count > 3 or daily_cash_total_customer > 200000"
+        ]
+    },
+    "high_risk_customer": {
+        "importance_weight": 0.92,
+        "behaviour_rules": [
+            "customer_risk_rating in ['High','Medium'] and customer_is_pep = true"
+        ]
+    },
+    "suspicious_product_channel": {
+        "importance_weight": 0.87,
+        "behaviour_rules": [
+            "product_type in ['fx_conversion','securities_trade'] and channel in ['FAST (SG)','RTGS'] and amount > 1000000"
+        ]
+    },
+    "inconsistent_currency_fx": {
+        "importance_weight": 0.78,
+        "behaviour_rules": [
+            "fx_indicator = true and fx_base_ccy != currency"
+        ]
+    }
+}

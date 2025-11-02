@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.controller import documents, web_scraper, evaluation, dashboard
+from backend.controller import documents, web_scraper, evaluation, dashboard, risk_score
 from backend.util.logging_config import setup_logging
 
 # Configure logging
@@ -22,6 +22,7 @@ app.include_router(documents.router, prefix="/api/upload")
 app.include_router(web_scraper.router, prefix="/api/scraper")
 app.include_router(evaluation.router, prefix="/api/evaluation")
 app.include_router(dashboard.router, prefix="/api/dashboard")
+app.include_router(risk_score.router, prefix="/api/risk-score")
 
 
 @app.get("/")

@@ -218,3 +218,4 @@ __marimo__/
 */docs
 
 backend/data/uploads
+backend/data/dictionaries/*.txt

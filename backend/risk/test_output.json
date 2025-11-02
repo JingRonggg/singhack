@@ -1,0 +1,11 @@
+{
+    "triggered_rules": {
+        "spelling_error_rate": [
+            "High spelling error rate   indicates poor document quality, potential carelessness, or AI-generated content. Frequent spelling mistakes may reduce credibility and suggest automated generation."
+        ],
+        "indentation_inconsistent": [
+            "Inconsistent indentation   may indicate careless formatting, automatic document generation, or manual tampering, reducing readability and trustworthiness."
+        ]
+    },
+    "risk_score": 50.0
+}
