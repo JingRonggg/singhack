@@ -4,8 +4,8 @@ import pandas as pd
 from backend.agents.base_agent import BaseAgent
 from backend.schemas import RiskOutput, Transaction
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from backend.services.transaction_loader import TransactionLoaderService
 import time
+
 
 class RiskScore:
     def __init__(self):
@@ -76,7 +76,7 @@ class RiskScore:
         self,
         df_suspicious,
         df_normal,
-        json_file_path="backend/tools/detect_suspicious_v2.json",
+        json_file_path="risk/detect_suspicious_v2.json",
     ):
         """Generate importance weights and behaviour rules for all headers via LLM."""
         sus_string = self.csv_to_string(df_suspicious)
@@ -187,8 +187,12 @@ class RiskScore:
             }
         )
         return validated
-    
-    def calculate_batch_risk(self, transactions: list[Transaction], rules_file="backend/risk/detect_suspicious_v2.json")->RiskOutput:
+
+    def calculate_batch_risk(
+        self,
+        transactions: list[Transaction],
+        rules_file="risk/detect_suspicious_v2.json",
+    ) -> RiskOutput:
         with open(rules_file, "r") as f:
             rules_json = json.load(f)
 
@@ -198,12 +202,19 @@ class RiskScore:
 
         try:
             for i in range(0, len(transactions), batch_size):
-                batch = transactions[i:i+batch_size]
+                batch = transactions[i : i + batch_size]
 
-                print(f"Processing batch {i//batch_size + 1}: {len(batch)} transactions")
+                print(
+                    f"Processing batch {i//batch_size + 1}: {len(batch)} transactions"
+                )
 
                 with ThreadPoolExecutor(max_workers=8) as executor:
-                    futures = {executor.submit(self.calculate_trans_risk, txn.model_dump(), rules_json): txn for txn in batch}
+                    futures = {
+                        executor.submit(
+                            self.calculate_trans_risk, txn.model_dump(), rules_json
+                        ): txn
+                        for txn in batch
+                    }
 
                     for future in as_completed(futures):
                         try:
@@ -216,7 +227,7 @@ class RiskScore:
             print(f"Error in calculating batch risk: {e}")
 
         final_risk_score = max(result) if result else 0.0
-        end=time.time()
+        end = time.time()
         print(f"Duration: {end - start:.4f} seconds")
         return RiskOutput(triggered_rules={}, risk_score=final_risk_score)
 
@@ -246,7 +257,7 @@ class RiskScore:
             ),
         }
 
-        with open("backend/risk/metadata_risk.json", "r") as f:
+        with open("risk/metadata_risk.json", "r") as f:
             rules = json.load(f)
 
         format_rules = rules.get("format", [])
@@ -300,14 +311,14 @@ class RiskScore:
             raise e
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     risk_score = RiskScore()
     # loader = TransactionLoaderService("transactions_mock_1000_for_participants.csv")
     # transactions = loader.load_all_transactions()
-    with open("backend/risk/detect_suspicious_v2.json", "r") as f:
+    with open("risk/detect_suspicious_v2.json", "r") as f:
         rules_json = json.load(f)
 
-    with open("backend/risk/format_test.json", "r") as f:
+    with open("risk/format_test.json", "r") as f:
         test = json.load(f)
 
     result = risk_score.calculate_batch_risk(test)

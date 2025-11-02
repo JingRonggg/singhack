@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-UPLOAD_DIR = "data/uploads"
+UPLOAD_DIR = "data\\uploads"
 
 
 @router.post("/transaction-single", response_model=RiskOutput)
@@ -74,7 +74,7 @@ async def get_transaction_risk(transaction: Transaction):
     """
     try:
         risk_score = RiskScore()
-        with open("backend/risk/detect_suspicious_v2.json", "r") as f:
+        with open("risk/detect_suspicious_v2.json", "r") as f:
             rules_json = json.load(f)
         transaction_dict = transaction.model_dump()
         result = risk_score.calculate_trans_risk(transaction_dict, rules_json)
@@ -89,16 +89,22 @@ async def get_transaction_risk(transaction: Transaction):
 
 
 @router.post("/transaction-batch", response_model=RiskOutput)
-async def get_transaction_risk(file: UploadFile = File(...)):
+async def get_transaction_batch_risk(file: UploadFile = File(...)):
     try:
         if not file.filename.endswith(".csv"):
             raise HTTPException(status_code=400, detail="File must be a CSV file")
 
         file_id = str(uuid4())
         file_path = os.path.join(UPLOAD_DIR, f"{file_id}_{file.filename}")
+        print(file_path)
         folder = os.path.dirname(file_path)
         if folder and not os.path.exists(folder):
             os.makedirs(folder, exist_ok=True)
+
+        # Save the uploaded file
+        with open(file_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
 
         loader = TransactionLoaderService(file_path)
         transactions = loader.load_all_transactions()

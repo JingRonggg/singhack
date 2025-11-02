@@ -44,7 +44,10 @@ const TransactionIngestionTab = () => {
     useState<EvaluationResult | null>(null);
   const [transactionRisk, setTransactionRisk] =
     useState<TransactionRiskResult | null>(null);
+  const [batchTransactionRisk, setBatchTransactionRisk] =
+    useState<TransactionRiskResult | null>(null);
   const [isCalculatingRisk, setIsCalculatingRisk] = useState(false);
+  const [isCalculatingBatchRisk, setIsCalculatingBatchRisk] = useState(false);
   const { toast } = useToast();
 
   const handleSingleIngestion = async () => {
@@ -135,7 +138,7 @@ const TransactionIngestionTab = () => {
 
       // Call the transaction-risk endpoint
       const response = await fetch(
-        "http://localhost:8000/api/risk-score/transaction-risk",
+        "http://localhost:8000/api/risk-score/transaction-single",
         {
           method: "POST",
           headers: {
@@ -234,6 +237,60 @@ const TransactionIngestionTab = () => {
       });
     } finally {
       setIsBatchEvaluating(false);
+    }
+  };
+
+  const handleCalculateBatchRisk = async () => {
+    if (!batchFile) {
+      toast({
+        title: "Error",
+        description: "Please select a CSV file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCalculatingBatchRisk(true);
+
+    try {
+      // Create form data for file upload
+      const formData = new FormData();
+      formData.append("file", batchFile);
+
+      // Call the transaction-batch endpoint
+      const response = await fetch(
+        "http://localhost:8000/api/risk-score/transaction-batch",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.detail ||
+            `Batch risk calculation failed: ${response.status}`
+        );
+      }
+
+      const riskData = await response.json();
+      setBatchTransactionRisk(riskData);
+
+      toast({
+        title: "Batch Risk Calculated",
+        description: `Batch risk score: ${riskData.risk_score.toFixed(2)}`,
+      });
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Unknown error occurred";
+      toast({
+        title: "Batch Risk Calculation Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsCalculatingBatchRisk(false);
     }
   };
 
@@ -461,7 +518,7 @@ const TransactionIngestionTab = () => {
               type="file"
               accept=".csv"
               onChange={handleFileChange}
-              disabled={isBatchEvaluating}
+              disabled={isBatchEvaluating || isCalculatingBatchRisk}
               className="cursor-pointer"
             />
             {batchFile && (
@@ -470,22 +527,90 @@ const TransactionIngestionTab = () => {
               </span>
             )}
           </div>
-          <Button
-            onClick={handleBatchIngestion}
-            disabled={isBatchEvaluating || !batchFile}
-          >
-            {isBatchEvaluating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Upload className="mr-2 h-4 w-4" />
-                Evaluate Batch
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleBatchIngestion}
+              disabled={
+                isBatchEvaluating || isCalculatingBatchRisk || !batchFile
+              }
+            >
+              {isBatchEvaluating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Evaluate Batch
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={handleCalculateBatchRisk}
+              disabled={
+                isBatchEvaluating || isCalculatingBatchRisk || !batchFile
+              }
+              variant="outline"
+            >
+              {isCalculatingBatchRisk ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Calculating...
+                </>
+              ) : (
+                "Calculate Batch Risk"
+              )}
+            </Button>
+          </div>
+
+          {batchTransactionRisk && (
+            <div className="mt-4 p-4 border rounded-lg space-y-3 bg-amber-50 dark:bg-amber-950">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">
+                  Batch Transaction Risk Analysis
+                </h3>
+                <span
+                  className={`text-lg font-bold px-3 py-1 rounded ${
+                    batchTransactionRisk.risk_score > 70
+                      ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                      : batchTransactionRisk.risk_score > 40
+                      ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300"
+                      : "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                  }`}
+                >
+                  Risk Score: {batchTransactionRisk.risk_score.toFixed(2)}
+                </span>
+              </div>
+
+              {Object.keys(batchTransactionRisk.triggered_rules).length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-semibold text-sm">Triggered Rules:</h4>
+                  {Object.entries(batchTransactionRisk.triggered_rules).map(
+                    ([rule, descriptions]) => (
+                      <div
+                        key={rule}
+                        className="bg-white dark:bg-gray-800 rounded p-3 space-y-1"
+                      >
+                        <div className="text-sm font-semibold capitalize">
+                          {rule.replace(/_/g, " ")}
+                        </div>
+                        {descriptions.map((desc, idx) => (
+                          <div
+                            key={idx}
+                            className="text-xs text-muted-foreground"
+                          >
+                            • {desc}
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <p className="text-xs text-muted-foreground">
             CSV file must match the Transaction schema with all required fields
           </p>
