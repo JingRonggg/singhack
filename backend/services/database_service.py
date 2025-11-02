@@ -139,8 +139,10 @@ class DatabaseService:
         try:
             # Convert rule to dict for storage
             rule_data = rule.model_dump()
-            # Convert UUID to string for storage
+            # Convert UUIDs to strings for storage
             rule_data["rule_id"] = str(rule_data["rule_id"])
+            if rule_data.get("ruleset_id"):
+                rule_data["ruleset_id"] = str(rule_data["ruleset_id"])
 
             # Insert or update rule
             result = (
@@ -268,8 +270,8 @@ class DatabaseService:
             for evaluation in all_evaluations:
                 self.store_rule_evaluation(evaluation)
 
-            # Store batch evaluation summary
-            self.store_batch_evaluation(transaction.transaction_id, batch_response)
+            # Note: batch_evaluations table is no longer used
+            # All evaluation data is available through rule_evaluations table
 
             logger.info(
                 f"Stored complete evaluation for transaction {transaction.transaction_id}"
@@ -363,30 +365,20 @@ class DatabaseService:
         self, limit: int = 100, offset: int = 0
     ) -> List[Dict[str, Any]]:
         """
-        Retrieve transactions with their evaluation summaries.
+        Retrieve transactions with their evaluation summaries from rule_evaluations.
 
         Args:
             limit: Maximum number of transactions to retrieve
             offset: Number of transactions to skip
 
         Returns:
-            List of transactions with evaluation data
+            List of transactions with evaluation data aggregated from rule_evaluations
         """
         try:
+            # Get transactions with their rule evaluations
             result = (
                 self.client.table("transactions")
-                .select(
-                    """
-                    *,
-                    batch_evaluations(
-                        total_rules_evaluated,
-                        violated_rules_count,
-                        passed_rules_count,
-                        overall_risk_level,
-                        requires_action
-                    )
-                """
-                )
+                .select("*, rule_evaluations(*)")
                 .order("booking_datetime", desc=True)
                 .range(offset, offset + limit - 1)
                 .execute()
@@ -402,31 +394,60 @@ class DatabaseService:
         self, limit: int = 50, offset: int = 0
     ) -> List[Dict[str, Any]]:
         """
-        Retrieve high-risk transactions.
+        Retrieve high-risk transactions based on rule violations.
+        A transaction is considered high risk if it has multiple violations
+        or violations with blocking/escalation actions.
 
         Args:
             limit: Maximum number of transactions to retrieve
             offset: Number of transactions to skip
 
         Returns:
-            List of high-risk transactions
+            List of high-risk transactions with their violations
         """
         try:
+            # Get transactions that have violations
             result = (
-                self.client.table("batch_evaluations")
-                .select(
-                    """
-                    *,
-                    transactions(*)
-                """
-                )
-                .eq("overall_risk_level", "high")
-                .order("created_at", desc=True)
-                .range(offset, offset + limit - 1)
+                self.client.table("rule_evaluations")
+                .select("transaction_id, transactions(*)")
+                .eq("conditions_met", True)
+                .order("evaluated_at", desc=True)
                 .execute()
             )
 
-            return result.data if result.data else []
+            # Group by transaction and calculate risk
+            transaction_map = {}
+            for eval_record in result.data if result.data else []:
+                txn_id = eval_record["transaction_id"]
+                if txn_id not in transaction_map:
+                    transaction_map[txn_id] = {
+                        "transaction": eval_record.get("transactions"),
+                        "violation_count": 0,
+                        "has_blocking": False,
+                        "has_escalation": False,
+                    }
+                transaction_map[txn_id]["violation_count"] += 1
+
+                # Check suggested action
+                suggested_action = eval_record.get("suggested_action", "")
+                if "blocking" in suggested_action.lower():
+                    transaction_map[txn_id]["has_blocking"] = True
+                if "escalation" in suggested_action.lower():
+                    transaction_map[txn_id]["has_escalation"] = True
+
+            # Filter for high risk (blocking, escalation, or 3+ violations)
+            high_risk = []
+            for txn_id, data in transaction_map.items():
+                is_high_risk = (
+                    data["has_blocking"]
+                    or data["has_escalation"]
+                    or data["violation_count"] > 2
+                )
+                if is_high_risk and data["transaction"]:
+                    high_risk.append(data["transaction"])
+
+            # Apply pagination
+            return high_risk[offset : offset + limit]
 
         except Exception as e:
             logger.error(f"Failed to retrieve high-risk transactions: {e}")
@@ -436,7 +457,7 @@ class DatabaseService:
         self, limit: int = 50, offset: int = 0
     ) -> List[Dict[str, Any]]:
         """
-        Retrieve transactions that require action.
+        Retrieve transactions that require action (have at least one rule violation).
 
         Args:
             limit: Maximum number of transactions to retrieve
@@ -446,21 +467,28 @@ class DatabaseService:
             List of transactions requiring action
         """
         try:
+            # Get all transactions with violations
             result = (
-                self.client.table("batch_evaluations")
-                .select(
-                    """
-                    *,
-                    transactions(*)
-                """
-                )
-                .eq("requires_action", True)
-                .order("created_at", desc=True)
-                .range(offset, offset + limit - 1)
+                self.client.table("rule_evaluations")
+                .select("transaction_id, transactions(*)")
+                .eq("conditions_met", True)
+                .order("evaluated_at", desc=True)
                 .execute()
             )
 
-            return result.data if result.data else []
+            # Get unique transactions
+            seen_transactions = set()
+            unique_transactions = []
+
+            for eval_record in result.data if result.data else []:
+                txn_id = eval_record["transaction_id"]
+                if txn_id not in seen_transactions:
+                    seen_transactions.add(txn_id)
+                    if eval_record.get("transactions"):
+                        unique_transactions.append(eval_record["transactions"])
+
+            # Apply pagination
+            return unique_transactions[offset : offset + limit]
 
         except Exception as e:
             logger.error(f"Failed to retrieve transactions requiring action: {e}")
@@ -520,9 +548,93 @@ class DatabaseService:
             logger.error(f"Failed to retrieve rules: {e}")
             raise
 
+    def get_latest_ruleset_id(self) -> Optional[str]:
+        """
+        Get the ruleset_id of the most recent crawl.
+
+        Returns:
+            UUID string of the latest ruleset, or None if no rulesets exist
+        """
+        try:
+            result = (
+                self.client.table("rules")
+                .select("ruleset_id, created_at")
+                .not_.is_("ruleset_id", "null")
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+
+            if result.data and len(result.data) > 0:
+                return result.data[0]["ruleset_id"]
+            return None
+
+        except Exception as e:
+            logger.error(f"Failed to retrieve latest ruleset_id: {e}")
+            raise
+
+    def get_rules_by_ruleset(
+        self, ruleset_id: str, limit: int = 1000, jurisdiction: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve all rules from a specific ruleset (crawl batch).
+
+        Args:
+            ruleset_id: UUID of the ruleset to retrieve
+            limit: Maximum number of rules to retrieve
+            jurisdiction: Optional jurisdiction filter (e.g., "HK")
+
+        Returns:
+            List of rules from the specified ruleset
+        """
+        try:
+            query = self.client.table("rules").select("*").eq("ruleset_id", ruleset_id)
+
+            # Apply jurisdiction filter if provided
+            if jurisdiction:
+                query = query.contains("jurisdiction", [jurisdiction])
+
+            result = query.order("created_at", desc=True).limit(limit).execute()
+
+            return result.data if result.data else []
+
+        except Exception as e:
+            logger.error(f"Failed to retrieve rules for ruleset {ruleset_id}: {e}")
+            raise
+
+    def get_latest_rules(
+        self, limit: int = 1000, jurisdiction: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve all rules from the most recent crawl.
+
+        Args:
+            limit: Maximum number of rules to retrieve
+            jurisdiction: Optional jurisdiction filter (e.g., "HK")
+
+        Returns:
+            List of rules from the latest ruleset
+        """
+        try:
+            # Get the latest ruleset_id
+            latest_ruleset_id = self.get_latest_ruleset_id()
+
+            if not latest_ruleset_id:
+                logger.warning("No ruleset found, falling back to all rules")
+                return self.get_all_rules(limit=limit, jurisdiction=jurisdiction)
+
+            # Get all rules from that ruleset
+            return self.get_rules_by_ruleset(
+                ruleset_id=latest_ruleset_id, limit=limit, jurisdiction=jurisdiction
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to retrieve latest rules: {e}")
+            raise
+
     def get_dashboard_stats(self) -> Dict[str, Any]:
         """
-        Get dashboard statistics.
+        Get dashboard statistics based on rule_evaluations.
 
         Returns:
             Dictionary with dashboard statistics
@@ -533,24 +645,7 @@ class DatabaseService:
                 self.client.table("transactions").select("id", count="exact").execute()
             )
 
-            # Get risk level distribution
-            risk_distribution = (
-                self.client.table("batch_evaluations")
-                .select("overall_risk_level", count="exact")
-                .execute()
-            )
-
-            risk_distribution  # type: ignore to supress ruff
-
-            # Get transactions requiring action
-            requires_action = (
-                self.client.table("batch_evaluations")
-                .select("id", count="exact")
-                .eq("requires_action", True)
-                .execute()
-            )
-
-            # Get violated rules count
+            # Get total rule evaluations with violations
             violated_rules = (
                 self.client.table("rule_evaluations")
                 .select("id", count="exact")
@@ -558,16 +653,43 @@ class DatabaseService:
                 .execute()
             )
 
-            # Get total rules
-            total_rules = (
-                self.client.table("rules").select("id", count="exact").execute()
+            # Get unique transactions with violations (requiring action)
+            violations_result = (
+                self.client.table("rule_evaluations")
+                .select("transaction_id")
+                .eq("conditions_met", True)
+                .execute()
             )
+
+            # Count unique transactions
+            unique_txns_with_violations = len(
+                set(
+                    v["transaction_id"]
+                    for v in (violations_result.data if violations_result.data else [])
+                )
+            )
+
+            # Get total rules from latest ruleset
+            latest_ruleset_id = self.get_latest_ruleset_id()
+            if latest_ruleset_id:
+                latest_rules = (
+                    self.client.table("rules")
+                    .select("id", count="exact")
+                    .eq("ruleset_id", latest_ruleset_id)
+                    .execute()
+                )
+                total_rules_count = latest_rules.count
+            else:
+                total_rules = (
+                    self.client.table("rules").select("id", count="exact").execute()
+                )
+                total_rules_count = total_rules.count
 
             return {
                 "total_transactions": total_txns.count,
-                "transactions_requiring_action": requires_action.count,
+                "transactions_requiring_action": unique_txns_with_violations,
                 "total_rule_violations": violated_rules.count,
-                "total_rules": total_rules.count,
+                "total_rules": total_rules_count,
             }
 
         except Exception as e:

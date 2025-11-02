@@ -189,7 +189,7 @@ Does this transaction violate or trigger the rule? Provide your analysis in JSON
         self, transaction: Transaction, rules: List[Rule]
     ) -> BatchEvaluationResponse:
         """
-        Evaluate a single transaction against multiple rules.
+        Evaluate a single transaction against multiple rules using batched LLM requests.
 
         Args:
             transaction: The transaction to evaluate
@@ -201,10 +201,11 @@ Does this transaction violate or trigger the rule? Provide your analysis in JSON
         violated_rules = []
         passed_rules = []
 
-        # Evaluate each rule
-        for rule in rules:
-            result = self.evaluate_transaction_against_rule(transaction, rule)
+        # Batch evaluate all rules in a single LLM call for efficiency
+        batch_results = self._batch_evaluate_rules(transaction, rules)
 
+        # Sort results into violated vs passed
+        for result in batch_results:
             if result.conditions_met:
                 violated_rules.append(result)
             else:
@@ -224,6 +225,179 @@ Does this transaction violate or trigger the rule? Provide your analysis in JSON
             overall_risk_level=overall_risk_level,
             requires_action=requires_action,
         )
+
+    def _batch_evaluate_rules(
+        self, transaction: Transaction, rules: List[Rule]
+    ) -> List[RuleEvaluationResult]:
+        """
+        Evaluate a transaction against multiple rules in a single LLM call.
+
+        Args:
+            transaction: The transaction to evaluate
+            rules: List of compliance rules to check
+
+        Returns:
+            List of RuleEvaluationResult objects
+        """
+        # Prepare transaction data as a structured summary
+        transaction_summary = f"""
+Transaction ID: {transaction.transaction_id}
+Amount: {transaction.amount} {transaction.currency}
+Originator: {transaction.originator_name} ({transaction.originator_country})
+Originator Account: {transaction.originator_account}
+Beneficiary: {transaction.beneficiary_name} ({transaction.beneficiary_country})
+Beneficiary Account: {transaction.beneficiary_account}
+Jurisdiction: {transaction.booking_jurisdiction}
+Regulator: {transaction.regulator}
+Channel: {transaction.channel}
+Product Type: {transaction.product_type}
+Booking DateTime: {transaction.booking_datetime}
+Value Date: {transaction.value_date}
+
+SWIFT Information:
+SWIFT MT: {transaction.swift_mt}
+Ordering Institution BIC: {transaction.ordering_institution_bic}
+Beneficiary Institution BIC: {transaction.beneficiary_institution_bic}
+SWIFT F50 Present: {transaction.swift_f50_present}
+SWIFT F59 Present: {transaction.swift_f59_present}
+SWIFT F70 Purpose: {transaction.swift_f70_purpose}
+SWIFT F71 Charges: {transaction.swift_f71_charges}
+Travel Rule Complete: {transaction.travel_rule_complete}
+
+FX Information:
+FX Indicator: {transaction.fx_indicator}
+FX Base Currency: {transaction.fx_base_ccy}
+FX Quote Currency: {transaction.fx_quote_ccy}
+FX Applied Rate: {transaction.fx_applied_rate}
+FX Market Rate: {transaction.fx_market_rate}
+FX Spread (BPS): {transaction.fx_spread_bps}
+FX Counterparty: {transaction.fx_counterparty}
+
+Customer Information:
+Customer ID: {transaction.customer_id}
+Customer Type: {transaction.customer_type}
+Customer Risk Rating: {transaction.customer_risk_rating}
+Customer is PEP: {transaction.customer_is_pep}
+KYC Last Completed: {transaction.kyc_last_completed}
+KYC Due Date: {transaction.kyc_due_date}
+EDD Required: {transaction.edd_required}
+EDD Performed: {transaction.edd_performed}
+Source of Wealth Documented: {transaction.sow_documented}
+
+Suitability & Advisory:
+Is Advised: {transaction.is_advised}
+Product Complex: {transaction.product_complex}
+Client Risk Profile: {transaction.client_risk_profile}
+Suitability Assessed: {transaction.suitability_assessed}
+Suitability Result: {transaction.suitability_result}
+Product Has VA Exposure: {transaction.product_has_va_exposure}
+VA Disclosure Provided: {transaction.va_disclosure_provided}
+
+Cash & Screening:
+Cash ID Verified: {transaction.cash_id_verified}
+Daily Cash Total (Customer): {transaction.daily_cash_total_customer}
+Daily Cash Transaction Count: {transaction.daily_cash_txn_count}
+Purpose Code: {transaction.purpose_code}
+Narrative: {transaction.narrative}
+Sanctions Screening: {transaction.sanctions_screening}
+Suspicion Determined DateTime: {transaction.suspicion_determined_datetime}
+STR Filed DateTime: {transaction.str_filed_datetime}
+        """.strip()
+
+        # Build rules list for prompt
+        rules_text = []
+        for idx, rule in enumerate(rules, 1):
+            rules_text.append(
+                f"Rule {idx} (ID: {rule.rule_id}):\n"
+                f"Statement: {rule.statement}\n"
+                f"Suggested Action: {rule.suggested_action}\n"
+            )
+        rules_prompt = "\n".join(rules_text)
+
+        # Create the evaluation prompt
+        system_message = SystemMessage(
+            content="""You are a compliance expert evaluating financial transactions against regulatory rules.
+
+Your task is to analyze whether a transaction violates or triggers each compliance rule.
+
+You must respond with a JSON object containing an array of evaluations, one for each rule.
+Each evaluation must have:
+- rule_index (integer): the index of the rule (starting from 1)
+- conditions_met (boolean): true if the rule is violated/triggered, false otherwise
+- confidence_score (float): your confidence level from 0.0 to 1.0
+- reasoning (string): clear explanation of why the rule was or wasn't triggered
+
+Be precise and thorough in your analysis. Consider all relevant transaction details."""
+        )
+
+        human_message = HumanMessage(
+            content=f"""Evaluate this transaction against the following compliance rules:
+
+TRANSACTION DETAILS:
+{transaction_summary}
+
+COMPLIANCE RULES TO EVALUATE:
+{rules_prompt}
+
+Evaluate the transaction against ALL {len(rules)} rules above. Provide your analysis in JSON format:
+{{
+  "evaluations": [
+    {{
+      "rule_index": 1,
+      "conditions_met": boolean,
+      "confidence_score": float (0.0-1.0),
+      "reasoning": "explanation"
+    }},
+    ...
+  ]
+}}"""
+        )
+
+        # Get LLM response
+        response = self.llm.invoke([system_message, human_message])
+
+        # Parse the JSON response
+        try:
+            # Extract JSON from response
+            response_text = response.content.strip()
+
+            # Sometimes LLMs wrap JSON in markdown code blocks
+            if response_text.startswith("```"):
+                # Remove markdown code block markers
+                lines = response_text.split("\n")
+                response_text = "\n".join(
+                    line for line in lines if not line.strip().startswith("```")
+                )
+
+            result_data = json.loads(response_text)
+
+            # Create evaluation results
+            evaluation_results = []
+            for eval_item in result_data.get("evaluations", []):
+                rule_idx = eval_item["rule_index"] - 1  # Convert to 0-based index
+                if 0 <= rule_idx < len(rules):
+                    rule = rules[rule_idx]
+                    evaluation_results.append(
+                        RuleEvaluationResult(
+                            transaction_id=transaction.transaction_id,
+                            rule_id=rule.rule_id,
+                            rule_statement=rule.statement,
+                            conditions_met=eval_item["conditions_met"],
+                            confidence_score=float(eval_item["confidence_score"]),
+                            reasoning=eval_item["reasoning"],
+                            suggested_action=rule.suggested_action,
+                        )
+                    )
+
+            return evaluation_results
+
+        except (json.JSONDecodeError, KeyError, IndexError) as e:
+            # Fallback to individual evaluation if batch parsing fails
+            raise Exception(
+                f"Failed to parse batch LLM response. Error: {e}\n"
+                f"Response was: {response.content}\n"
+                f"Falling back to individual rule evaluation may be needed."
+            )
 
     def _determine_risk_level(self, violated_rules: List[RuleEvaluationResult]) -> str:
         """
