@@ -320,18 +320,67 @@ const TransactionIngestionTab = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <Textarea
-            placeholder='Enter transaction data in JSON format, e.g.:
+            placeholder='Enter transaction data in JSON format. Example (copy and modify):
 {
   "transaction_id": "TXN-001",
-  "amount": 50000,
-  "currency": "USD",
   "booking_jurisdiction": "HK",
   "regulator": "HKMA",
-  ...
+  "booking_datetime": "2024-01-01T10:00:00",
+  "value_date": "01/01/2024",
+  "amount": 50000,
+  "currency": "USD",
+  "channel": "RTGS",
+  "product_type": "wire_transfer",
+  "originator_name": "John Doe",
+  "originator_account": "ACC001",
+  "originator_country": "US",
+  "beneficiary_name": "Jane Smith",
+  "beneficiary_account": "ACC002",
+  "beneficiary_country": "HK",
+  "swift_mt": "MT103",
+  "ordering_institution_bic": "ABCDUS33",
+  "beneficiary_institution_bic": "XYZZHKHH",
+  "swift_f50_present": "TRUE",
+  "swift_f59_present": "TRUE",
+  "swift_f70_purpose": "Payment for goods",
+  "swift_f71_charges": "SHA",
+  "travel_rule_complete": "TRUE",
+  "fx_indicator": "FALSE",
+  "fx_base_ccy": "",
+  "fx_quote_ccy": "",
+  "fx_applied_rate": 0,
+  "fx_market_rate": 0,
+  "fx_spread_bps": 0,
+  "fx_counterparty": "",
+  "customer_id": "CUST-001",
+  "customer_type": "individual",
+  "customer_risk_rating": "Low",
+  "customer_is_pep": "FALSE",
+  "kyc_last_completed": "01/01/2023",
+  "kyc_due_date": "01/01/2025",
+  "edd_required": "FALSE",
+  "edd_performed": "FALSE",
+  "sow_documented": "TRUE",
+  "purpose_code": "GOODS",
+  "narrative": "Payment for goods",
+  "payment_type": "WIRE",
+  "is_advised": "FALSE",
+  "product_complex": "FALSE",
+  "client_risk_profile": "Low",
+  "suitability_assessed": "TRUE",
+  "suitability_result": "match",
+  "product_has_va_exposure": "FALSE",
+  "va_disclosure_provided": "FALSE",
+  "cash_id_verified": "FALSE",
+  "daily_cash_total_customer": 0,
+  "daily_cash_txn_count": 1,
+  "sanctions_screening": "passed",
+  "suspicion_determined_datetime": "",
+  "str_filed_datetime": ""
 }'
             value={singleTransaction}
             onChange={(e) => setSingleTransaction(e.target.value)}
-            rows={10}
+            rows={20}
             disabled={isEvaluating || isCalculatingRisk}
           />
           <div className="flex gap-2">
