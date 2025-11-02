@@ -153,9 +153,9 @@ async def evaluate_batch_transactions(file: UploadFile = File(...)):
         with open(file_path, "wb") as f:
             f.write(await file.read())
 
-        # Fetch all rules from database
+        # Fetch rules from the latest crawl/ruleset
         db_service = DatabaseService()
-        rules_data = db_service.get_all_rules(limit=1000)
+        rules_data = db_service.get_latest_rules(limit=1000)
 
         if not rules_data:
             raise HTTPException(
@@ -181,22 +181,35 @@ async def evaluate_batch_transactions(file: UploadFile = File(...)):
         # Initialize evaluation service
         service = RuleEvaluationService()
 
-        # Evaluate each transaction
+        # Store all rules once (not per transaction)
+        logger.info(f"Storing {len(parsed_rules)} rules in database")
+        for rule in parsed_rules:
+            try:
+                db_service.store_rule(rule)
+            except Exception as rule_error:
+                logger.warning(f"Failed to store rule {rule.rule_id}: {rule_error}")
+
+        # Evaluate each transaction against all rules
         results = []
         for transaction in transactions:
             try:
+                # Evaluate transaction against all rules
                 result = service.evaluate_transaction_against_rules(
                     transaction, parsed_rules
                 )
 
-                # Store evaluation results in database
+                # Store transaction and evaluation results in database
                 try:
-                    db_service = DatabaseService()
-                    db_service.store_complete_evaluation(
-                        transaction=transaction,
-                        rules=parsed_rules,
-                        batch_response=result,
-                    )
+                    db_service.store_transaction(transaction)
+
+                    # Store all individual rule evaluations
+                    all_evaluations = result.violated_rules + result.passed_rules
+                    for evaluation in all_evaluations:
+                        db_service.store_rule_evaluation(evaluation)
+
+                    # Note: batch_evaluations table is no longer used
+                    # All data can be queried from rule_evaluations table
+
                     logger.info(
                         f"Stored evaluation results for transaction {transaction.transaction_id}"
                     )

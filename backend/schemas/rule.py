@@ -1,6 +1,6 @@
 from uuid import UUID, uuid4
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 
 class Rule(BaseModel):
@@ -26,4 +26,8 @@ class Rule(BaseModel):
     ] = Field(
         description="Suggested action to take when this rule is violated. Choose from: enhanced due diligence (additional KYC), transaction blocking (reject transaction), or escalation (escalate to compliance team).",
         example="enhanced due diligence",
+    )
+    ruleset_id: Optional[UUID] = Field(
+        default=None,
+        description="UUID linking this rule to a specific web crawl/extraction batch. Rules from the same crawl share the same ruleset_id.",
     )

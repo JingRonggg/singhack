@@ -6,7 +6,7 @@ from typing import List, Optional, Set, Dict
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
 from collections import defaultdict
-from uuid import uuid4
+from uuid import uuid4, UUID
 
 from backend.util.config import load_config
 from backend.schemas.rules import RulesSchema, RulesExtractionSchema
@@ -53,7 +53,10 @@ def infer_jurisdiction_from_domain(domain: str) -> list[str]:
 
 
 def convert_extracted_rules_to_rule_objects(
-    extracted_rules: Dict[str, str], source_url: str, jurisdiction: list[str]
+    extracted_rules: Dict[str, str],
+    source_url: str,
+    jurisdiction: list[str],
+    ruleset_id: UUID,
 ) -> Dict[str, Rule]:
     """
     Convert LLM-extracted rules (Dict[str, str]) to proper Rule objects (Dict[str, Rule]).
@@ -62,6 +65,7 @@ def convert_extracted_rules_to_rule_objects(
         extracted_rules: Dictionary mapping rule numbers to rule text
         source_url: The URL where rules were extracted from
         jurisdiction: List of applicable jurisdictions
+        ruleset_id: UUID linking rules to this specific crawl/extraction batch
 
     Returns:
         Dictionary mapping rule numbers to Rule objects
@@ -76,6 +80,7 @@ def convert_extracted_rules_to_rule_objects(
             jurisdiction=jurisdiction,
             source_url=source_url,
             suggested_action="enhanced due diligence",  # Default action, can be enhanced with LLM classification
+            ruleset_id=ruleset_id,
         )
         rule_objects[rule_number] = rule
 
@@ -221,14 +226,19 @@ Extract at least 5 key rules if available.
             # Infer jurisdiction from domain
             jurisdiction = infer_jurisdiction_from_domain(domain)
 
+            # Create a ruleset_id for this crawl batch
+            ruleset_id = uuid4()
+
             # Convert extracted rules (Dict[str, str]) to Rule objects (Dict[str, Rule])
             rule_objects = convert_extracted_rules_to_rule_objects(
                 extracted_rules=response.rules,
                 source_url=domain,
                 jurisdiction=jurisdiction,
+                ruleset_id=ruleset_id,
             )
 
             rules_schema = RulesSchema(
+                ruleset_id=ruleset_id,
                 created_at=int(datetime.now().timestamp()),
                 rules=rule_objects,
                 source_urls=[domain],
@@ -248,14 +258,17 @@ Extract at least 5 key rules if available.
             # Create error schema with proper metadata
             # For errors, create a single error Rule object
             jurisdiction = infer_jurisdiction_from_domain(domain)
+            error_ruleset_id = uuid4()
             error_rule = Rule(
                 rule_id=uuid4(),
                 statement=f"Failed to parse: {str(e)}",
                 jurisdiction=jurisdiction,
                 source_url=domain,
                 suggested_action="enhanced due diligence",
+                ruleset_id=error_ruleset_id,
             )
             error_schema = RulesSchema(
+                ruleset_id=error_ruleset_id,
                 created_at=int(datetime.now().timestamp()),
                 rules={"error": error_rule},
                 source_urls=source_urls,

@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS rule_evaluations (
 -- Batch evaluation summary table (stores the overall evaluation result)
 CREATE TABLE IF NOT EXISTS batch_evaluations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    transaction_id TEXT NOT NULL REFERENCES transactions(transaction_id) ON DELETE CASCADE,
+    transaction_id TEXT UNIQUE NOT NULL REFERENCES transactions(transaction_id) ON DELETE CASCADE,
     total_rules_evaluated INTEGER NOT NULL,
     violated_rules_count INTEGER NOT NULL,
     passed_rules_count INTEGER NOT NULL,
